@@ -1,23 +1,20 @@
 """
 FortuneDiary Backend — FastAPI entry point.
 
-Serves:
-- /agent  — AG-UI protocol endpoint (for CopilotKit frontend)
-- /health — health check
-
-Run:
-    uvicorn app.main:app --reload --port 8000
+Endpoints:
+- POST /agent       — AG-UI protocol (primary, used by Next.js frontend)
+- POST /copilotkit  — CopilotKit SDK (legacy fallback)
+- GET  /health      — health check
 """
 from __future__ import annotations
 
 import logging
-
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
-from app.agui_endpoint import router as agui_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,38 +23,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ── Lifespan ────────────────────────────────────────────────────────
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup / shutdown hooks."""
     logger.info("🚀 FortuneDiary backend starting...")
 
-    # Eagerly build the AG-UI graph so first request is fast
-    from app.agui_endpoint import get_graph
-    try:
-        get_graph()
-        logger.info("✅ AG-UI graph ready")
-    except Exception as e:
-        logger.error(f"⚠️  AG-UI graph build failed: {e}")
+    # 1. Compile the shared graph (used by both endpoints)
+    from app.agent.agui_graph import build_agui_graph
+    build_agui_graph()
+    logger.info("✅ LangGraph graph ready")
 
-    # Mount CopilotKit SDK endpoint
-    try:
-        from app.copilotkit_endpoint import mount_copilotkit
-        mount_copilotkit(app)
-    except Exception as e:
-        logger.warning(f"⚠️  CopilotKit endpoint mount skipped: {e}")
+    # 2. Mount AG-UI endpoint → /agent (primary)
+    from app.agui_endpoint import mount_agui_endpoint
+    mount_agui_endpoint(app)
 
-    # Also init the original chat agent if needed for non-AG-UI usage
+    # 3. Mount CopilotKit SDK endpoint → /copilotkit (fallback)
+    from app.copilotkit_endpoint import mount_copilotkit
+    mount_copilotkit(app)
+
+    # 4. Legacy checkpointed agent (REST API usage)
     try:
         from app.agent.graph import chat_agent
         await chat_agent.initialize()
-    except Exception as e:
-        logger.warning(f"⚠️  Legacy chat agent init skipped: {e}")
+    except Exception as exc:
+        logger.warning("⚠️  Legacy chat agent init skipped: %s", exc)
 
     yield
 
-    # Shutdown
     try:
         from app.agent.graph import chat_agent
         await chat_agent.shutdown()
@@ -66,29 +57,31 @@ async def lifespan(app: FastAPI):
     logger.info("👋 Backend shut down")
 
 
-# ── App ─────────────────────────────────────────────────────────────
+app = FastAPI(title="FortuneDiary API", version="0.1.0", lifespan=lifespan)
 
-app = FastAPI(
-    title="FortuneDiary API",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-# CORS — allow CopilotKit frontend (Next.js dev server)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        *CORS_ORIGINS,
-        "http://localhost:3000",   # Next.js default
-        "http://localhost:3001",
-    ],
+    allow_origins=[*CORS_ORIGINS, "http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount AG-UI router
-app.include_router(agui_router, tags=["ag-ui"])
+
+# ── REST API routers ─────────────────────────────────────────────
+
+for module_path, prefix, tag in [
+    ("app.api.auth", "/api/v1/auth", "auth"),
+    ("app.api.fortune", "/api/v1/fortune", "fortune"),
+    ("app.api.diary", "/api/v1/diaries", "diaries"),
+]:
+    try:
+        import importlib
+        mod = importlib.import_module(module_path)
+        app.include_router(mod.router, prefix=prefix, tags=[tag])
+        logger.info("✅ %s router mounted at %s", tag, prefix)
+    except Exception as exc:
+        logger.warning("⚠️  %s router skipped: %s", tag, exc)
 
 
 @app.get("/health")

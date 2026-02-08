@@ -3,7 +3,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import date, datetime

@@ -2,252 +2,247 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap');
+/* ─── Fonts (DM Sans + Fraunces, matching web2.html) ─── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap');
 
+/* ─── Design tokens (from web2.html T object) ─── */
 :root {
-  --color-bg: #faf8f5;
-  --color-surface: #ffffff;
-  --color-text: #1a1612;
-  --color-text-secondary: #8c7e6f;
-  --color-accent: #ee7a10;
-  --color-accent-soft: #fef7ee;
-  --color-border: #ece5db;
-  --color-user-bubble: #1a1612;
-  --color-user-text: #faf8f5;
+  --cream: #FDFBF8;
+  --coral-p: #FF6B4A;
+  --coral-s: #FF8A6A;
+  --coral-soft: #FFB89A;
+  --coral-airy: #FFF5F0;
+  --coral-cream: #FFFBFA;
+  --blue-p: #5C8BFF;
+  --blue-s: #7AA3FF;
+  --blue-soft: #A8C4FF;
+  --blue-airy: #E6F0FF;
+  --purple-p: #8F6BF7;
+  --purple-s: #9B7DF9;
+  --purple-soft: #D4C5FF;
+  --purple-airy: #F0ECFF;
+  --honey-p: #FFD75A;
+  --honey-s: #FFE073;
+  --honey-soft: #FFEEB0;
+  --honey-airy: #FFFBF0;
+  --career-p: #7DD3FC;
+  --career-s: #9BDFFD;
+  --career-soft: #C0EBFE;
+  --career-airy: #EAF8FF;
+  --love-p: #FFB8D0;
+  --love-s: #FFCBDD;
+  --love-soft: #FFE0EB;
+  --love-airy: #FFF6F9;
+  --wealth-p: #F2D94D;
+  --wealth-s: #F7E36B;
+  --wealth-soft: #FAEEB0;
+  --wealth-airy: #FDF9E6;
+  --study-p: #7DDFBD;
+  --study-s: #9BE8CF;
+  --study-soft: #C0F0E0;
+  --study-airy: #E8FBF5;
+  --social-p: #B8A4FF;
+  --social-s: #CBBAFE;
+  --social-soft: #E0D4FF;
+  --social-airy: #F4F1FF;
+  --text-primary: #1E1E1E;
+  --text-secondary: #4B4B4B;
+  --text-tertiary: #6F6F6F;
+  --text-quaternary: #999999;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
-  margin: 0;
-  padding: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  width: 100%;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--text-primary);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+
+/* ─── Animations ─── */
+
+@keyframes orbDrift {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33% { transform: translate(18px,-12px) scale(1.03); }
+  66% { transform: translate(-12px,10px) scale(0.97); }
 }
 
-/* Shimmer animation for loading states */
+@keyframes orbFloat {
+  0%,100% { transform: translate(0,0) scale(1); }
+  25% { transform: translate(10px,-14px) scale(1.04); }
+  50% { transform: translate(-8px,12px) scale(0.96); }
+  75% { transform: translate(14px,6px) scale(1.02); }
+}
+
+@keyframes blobBreathe {
+  0%,100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.018) translateY(-3px); }
+}
+
+@keyframes blobGlow {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.12); }
+}
+
+@keyframes healingCardGlow {
+  0%,100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+  50% { filter: brightness(1.06) drop-shadow(0 0 10px rgba(255,138,106,0.4)); }
+}
+
+@keyframes tarotNameIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(238, 122, 16, 0.08) 50%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-/* Pulse dot animation */
-@keyframes pulse-dot {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
-}
-
-.pulse-dot:nth-child(1) { animation: pulse-dot 1.4s ease-in-out infinite; }
-.pulse-dot:nth-child(2) { animation: pulse-dot 1.4s ease-in-out 0.2s infinite; }
-.pulse-dot:nth-child(3) { animation: pulse-dot 1.4s ease-in-out 0.4s infinite; }
-
-/* Fade-in for messages */
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-up {
-  animation: fade-up 0.3s ease-out forwards;
-}
-
-/* Chip enter animation */
-@keyframes chip-enter {
+@keyframes chipEnter {
   from { opacity: 0; transform: translateY(4px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-chip-enter {
-  animation: chip-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+@keyframes pulseDot {
+  0%,80%,100% { opacity: .3; transform: scale(.8); }
+  40% { opacity: 1; transform: scale(1); }
 }
 
-/* ─── Chat shell layout ─────────────────────────────────── */
+.animate-fade-up { animation: fadeUp 0.3s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.3s ease; }
+.animate-chip-enter { animation: chipEnter 0.35s cubic-bezier(.22,1,.36,1) forwards; }
+.animate-tarot-name { animation: tarotNameIn 0.8s ease; }
 
-.chat-shell {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  max-width: 720px;
-  margin: 0 auto;
-  background: var(--color-bg);
+.shimmer-block {
+  background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.chat-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
-}
+.pulse-dot:nth-child(1) { animation: pulseDot 1.4s ease-in-out infinite; }
+.pulse-dot:nth-child(2) { animation: pulseDot 1.4s ease-in-out .2s infinite; }
+.pulse-dot:nth-child(3) { animation: pulseDot 1.4s ease-in-out .4s infinite; }
 
-.header-mark {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f19533, #ee7a10);
-  box-shadow: 0 0 8px rgba(238, 122, 16, 0.35);
-}
+/* Hide scrollbar for fortune scroll area */
+.fortune-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.fortune-scroll::-webkit-scrollbar { display: none; }
 
-.chat-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
+/* ─── CopilotKit overrides (adapted to new palette) ─── */
 
-.copilot-chat-inner {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ─── CopilotKit style overrides ────────────────────────── */
-
-/* Root variables — warm theme */
 :root {
-  --copilot-kit-primary-color: #ee7a10;
+  --copilot-kit-primary-color: #FF6B4A;
   --copilot-kit-contrast-color: #ffffff;
-  --copilot-kit-background-color: #faf8f5;
-  --copilot-kit-secondary-color: #f5f0ea;
-  --copilot-kit-secondary-contrast-color: #1a1612;
-  --copilot-kit-response-button-background-color: #fef7ee;
-  --copilot-kit-response-button-color: #b9490a;
-  --copilot-kit-separator-color: #ece5db;
-  --copilot-kit-muted-color: #8c7e6f;
+  --copilot-kit-background-color: #FDFBF8;
+  --copilot-kit-secondary-color: #FFF5F0;
+  --copilot-kit-secondary-contrast-color: #1E1E1E;
+  --copilot-kit-response-button-background-color: #FFF5F0;
+  --copilot-kit-response-button-color: #FF6B4A;
+  --copilot-kit-separator-color: rgba(0,0,0,0.04);
+  --copilot-kit-muted-color: #999999;
 }
 
-/* Hide CopilotChat built-in header (we have our own) */
-.copilotKitHeader {
-  display: none !important;
-}
+.copilotKitHeader { display: none !important; }
 
-/* Messages container */
 .copilotKitMessages {
   padding: 20px 16px !important;
-  background: var(--color-bg) !important;
-}
-
-/* User message bubble */
-.copilotKitUserMessage {
-  background: var(--color-user-bubble) !important;
-  color: var(--color-user-text) !important;
-  border-radius: 18px 18px 4px 18px !important;
-  padding: 10px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.55 !important;
-  max-width: 80% !important;
-  animation: fade-up 0.25s ease-out;
-}
-
-/* Assistant message bubble */
-.copilotKitAssistantMessage {
   background: transparent !important;
-  color: var(--color-text) !important;
-  padding: 4px 0 !important;
-  font-size: 14px !important;
-  line-height: 1.65 !important;
-  max-width: 88% !important;
-  animation: fade-up 0.25s ease-out;
-  font-family: 'DM Sans', system-ui, sans-serif !important;
 }
 
-.copilotKitAssistantMessage p {
-  margin: 0 0 0.5em 0;
+.copilotKitUserMessage {
+  background: linear-gradient(135deg, var(--coral-s), var(--coral-p)) !important;
+  color: #fff !important;
+  border-radius: 18px 18px 4px 18px !important;
+  padding: 11px 16px !important;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+  max-width: 82% !important;
+  animation: fadeUp 0.25s ease-out;
 }
 
-.copilotKitAssistantMessage p:last-child {
-  margin-bottom: 0;
+.copilotKitAssistantMessage {
+  background: rgba(255,255,255,0.8) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid rgba(0,0,0,0.04) !important;
+  border-radius: 18px 18px 18px 4px !important;
+  padding: 11px 16px !important;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+  max-width: 85% !important;
+  animation: fadeUp 0.25s ease-out;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
+.copilotKitAssistantMessage p { margin: 0 0 .5em 0; }
+.copilotKitAssistantMessage p:last-child { margin-bottom: 0; }
 
-/* Input area */
 .copilotKitInput {
-  border-top: 1px solid var(--color-border) !important;
-  background: var(--color-bg) !important;
-  padding: 12px 16px !important;
+  border-top: 1px solid rgba(0,0,0,0.03) !important;
+  background: transparent !important;
+  padding: 10px 16px 16px !important;
 }
 
 .copilotKitInput textarea {
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
+  background: rgba(255,255,255,0.5) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
   border-radius: 14px !important;
-  padding: 10px 16px !important;
-  font-size: 14px !important;
-  font-family: 'DM Sans', system-ui, sans-serif !important;
-  color: var(--color-text) !important;
+  padding: 11px 16px !important;
+  font-size: 13.5px !important;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  color: var(--text-primary) !important;
   resize: none !important;
-  transition: border-color 0.2s;
+  transition: border-color .2s;
 }
-
 .copilotKitInput textarea:focus {
   outline: none !important;
-  border-color: var(--color-accent) !important;
-  box-shadow: 0 0 0 3px rgba(238, 122, 16, 0.08) !important;
+  border-color: var(--coral-p) !important;
+  box-shadow: 0 0 0 3px rgba(255,107,74,0.08) !important;
 }
+.copilotKitInput textarea::placeholder { color: var(--text-quaternary) !important; }
 
-.copilotKitInput textarea::placeholder {
-  color: var(--color-text-secondary) !important;
-  opacity: 0.7;
-}
-
-/* Send button */
 .copilotKitInputControls button[type="submit"],
 .copilotKitInputControls button {
-  background: var(--color-user-bubble) !important;
-  border-radius: 10px !important;
-  transition: opacity 0.15s !important;
+  background: linear-gradient(135deg, var(--coral-s), var(--coral-p)) !important;
+  border-radius: 14px !important;
+  transition: opacity .15s !important;
 }
+.copilotKitInputControls button:hover { opacity: .85 !important; }
 
-.copilotKitInputControls button:hover {
-  opacity: 0.85 !important;
-}
+.copilotKitTypingIndicator { color: var(--text-quaternary) !important; }
 
-/* Loading indicator */
-.copilotKitTypingIndicator {
-  color: var(--color-text-secondary) !important;
-}
-
-/* Suggestions (if any appear) */
 .copilotKitSuggestion {
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 10px !important;
-  color: var(--color-text) !important;
-  font-size: 13px !important;
-  transition: all 0.15s !important;
+  background: rgba(255,255,255,0.75) !important;
+  border: 1px solid rgba(255,107,74,0.15) !important;
+  border-radius: 100px !important;
+  color: var(--coral-p) !important;
+  font-size: 12px !important;
+  transition: all .15s !important;
+}
+.copilotKitSuggestion:hover {
+  border-color: var(--coral-p) !important;
+  background: var(--coral-airy) !important;
 }
 
-.copilotKitSuggestion:hover {
-  border-color: var(--color-accent) !important;
-  background: var(--color-accent-soft) !important;
-}
+.copilot-chat-inner { flex: 1; display: flex; flex-direction: column; }

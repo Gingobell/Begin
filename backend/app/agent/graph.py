@@ -21,6 +21,9 @@ from psycopg_pool import AsyncConnectionPool
 from app.config import SUPABASE_DB_URI, GOOGLE_API_KEY, DEFAULT_CHAT_MODEL
 from app.agent.prompts import build_system_prompt
 from app.services.vector_service import vector_service
+from app.services.bazi_service import bazi_service
+from app.services.tarot_service import tarot_service
+from app.core.db import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,67 @@ async def search_diaries(query: str, config: RunnableConfig, max_results: int = 
     except Exception as e:
         logger.error(f"Diary search tool error: {e}", exc_info=True)
         return "日记搜索出错了，请稍后再试。"
+
+
+def _get_user_birth_date(user_id: str):
+    """从 profiles 表获取用户生日"""
+    from datetime import datetime as dt
+    resp = supabase.table("profiles").select("birth_datetime").eq("id", user_id).single().execute()
+    if resp.data and resp.data.get("birth_datetime"):
+        return dt.fromisoformat(resp.data["birth_datetime"]).date()
+    return None
+
+
+@tool
+def query_bazi_info(config: RunnableConfig) -> str:
+    """查询用户的八字命盘信息。当用户问到自己的八字、日主、五行、体质强弱、今日流日运势等命理相关问题时使用。"""
+    from datetime import date
+    user_id = config.get("configurable", {}).get("user_id", "")
+    if not user_id:
+        return "无法查询八字：缺少用户信息。"
+    try:
+        birth_date = _get_user_birth_date(user_id)
+        if not birth_date:
+            return "你还没有设置生日，请先在设置中填写出生日期。"
+        bazi = bazi_service.calculate_bazi(birth_date)
+        flow = bazi_service.analyze_daily_flow(birth_date, target_date=date.today())
+        return (
+            f"日主: {bazi['day_master']} | 体质: {bazi['body_strength']}\n"
+            f"四柱: {bazi['year_pillar']} {bazi['month_pillar']} {bazi['day_pillar']} {bazi['hour_pillar']}\n"
+            f"今日流日: {flow['daily_pillar']['stem']}{flow['daily_pillar']['branch']}\n"
+            f"天干影响: {flow['stem_influence']['relation']} — {flow['stem_influence']['analysis']}\n"
+            f"地支影响: {flow['branch_influence']['relation']} — {flow['branch_influence']['analysis']}\n"
+            f"十二长生: {flow['energy_phase']} | 贵人分: {flow['nobleman_score']}"
+        )
+    except Exception as e:
+        logger.error(f"BaZi tool error: {e}", exc_info=True)
+        return "八字查询出错了，请稍后再试。"
+
+
+@tool
+def query_tarot_info(config: RunnableConfig) -> str:
+    """查询用户今日塔罗牌信息。当用户问到今天的塔罗牌、牌面含义、抽到了什么牌等塔罗相关问题时使用。"""
+    from datetime import date
+    user_id = config.get("configurable", {}).get("user_id", "")
+    if not user_id:
+        return "无法查询塔罗：缺少用户信息。"
+    try:
+        today = date.today()
+        reading = tarot_service.draw_daily_card(user_id, today)
+        if "error" in reading:
+            return f"塔罗查询失败：{reading['error']}"
+        card = reading.get("card", {})
+        orientation = reading.get("orientation", "upright")
+        ori_label = "正位" if orientation == "upright" else "逆位"
+        meaning = card.get("meaning_up") if orientation == "upright" else card.get("meaning_down")
+        return (
+            f"今日塔罗: {card.get('card_name', '未知')} ({ori_label})\n"
+            f"牌义: {meaning}\n"
+            f"描述: {card.get('description', '')}"
+        )
+    except Exception as e:
+        logger.error(f"Tarot tool error: {e}", exc_info=True)
+        return "塔罗查询出错了，请稍后再试。"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -121,7 +185,7 @@ class ChatAgentService:
             graph_checkpointer = AsyncPostgresSaver(self.pool)
             self.graph = create_react_agent(
                 model=model,
-                tools=[search_diaries],
+                tools=[search_diaries, query_bazi_info, query_tarot_info],
                 checkpointer=graph_checkpointer,
             )
 

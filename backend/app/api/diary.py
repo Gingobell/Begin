@@ -28,8 +28,7 @@ from ..models.user import User
 from .auth import get_current_user
 from ..core.db import supabase
 from ..services.vector_service import vector_service
-from ..services.genai_service import genai_service
-from ..services.enhanced_genai_service import enhanced_genai_service
+from ..core.genai_service import genai_service
 # from ..services.mem0_service import mem0_service  # 已注释：使用 Letta 替代
 from datetime import date, datetime, timezone, timedelta
 
@@ -199,10 +198,7 @@ async def create_diary(
 
     # 3. 调用AI生成反馈 (使用知识库增强)
     try:
-        instant_feedback = await enhanced_genai_service.generate_diary_feedback_with_knowledge(
-            base_prompt=feedback_prompt,
-            diary_content=diary.content
-        )
+        instant_feedback = await genai_service.generate_text(feedback_prompt)
     except Exception as e:
         instant_feedback = f"AI反馈生成失败: {e}" # 在反馈生成失败时返回错误信息，而不是None
 
@@ -635,10 +631,7 @@ async def transform_voice_diary_style(
         logging.info(f"🎨 用户 {current_user.id} 请求风格转换: {style_config['name']}")
         
         # 使用 enhanced_genai_service 生成风格化文本
-        styled_text = await enhanced_genai_service.generate_chat_response_with_knowledge(
-            base_prompt=full_system_prompt,
-            conversation_context=f"语音日记风格转换 - {style_config['name']}"
-        )
+        styled_text = await genai_service.generate_text(full_system_prompt)
         
         logging.info(f"✅ 风格转换成功，原文长度: {len(raw_text)}, 转换后长度: {len(styled_text)}")
         

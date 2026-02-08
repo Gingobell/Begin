@@ -1,45 +1,54 @@
 [project]
 name = "fortunediary-backend"
 version = "0.1.0"
-description = "FortuneDiary Backend — LangGraph agent with AG-UI protocol"
+description = "FortuneDiary Backend — LangGraph agent with CopilotKit"
 requires-python = ">=3.11"
 dependencies = [
     # --- Core ---
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.30.0",
-    "python-dotenv>=1.0.0",
-    "pydantic>=2.0",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+    "pydantic[email]",
 
     # --- LangChain / LangGraph ---
-    "langgraph>=0.4.0",
-    "langchain-core>=0.3.0",
-    "langchain-google-genai>=2.1.0",
+    "langchain>=1.0",
+    "langgraph",
+    "langchain-core",
+    "langchain-google-genai",
 
-    # --- LangGraph Postgres checkpointer (for legacy chat endpoint) ---
-    "langgraph-checkpoint-postgres>=2.0.0",
-    "psycopg[binary,pool]>=3.1.0",
+    # --- LangGraph Postgres checkpointer ---
+    "langgraph-checkpoint-postgres",
+    "psycopg[binary,pool]",
 
-    # --- AG-UI protocol ---
-    "ag-ui-core>=0.1.0",
-    "ag-ui-encoder>=0.1.0",
-
-    # --- CopilotKit SDK ---
-    "copilotkit>=0.1.0",
+    # --- CopilotKit SDK + AG-UI ---
+    "copilotkit>=0.1.78",
+    "ag-ui-langgraph",
 
     # --- Supabase ---
-    "supabase>=2.0.0",
+    "supabase",
 
-    # --- Google Generative AI (embeddings) ---
-    "google-generativeai>=0.8.0",
+    # --- Google Generative AI ---
+    "google-generativeai",
+
+    # --- Structured generation ---
+    "instructor",
+
+    # --- Letta user profiles ---
+    "letta-client",
+    
+    # --- Chinese lunar calendar (for fortune calculations) ---
+    "cnlunar",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.8.0",
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24.0",
-    "httpx>=0.27.0",
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
 ]
+
+
 
 [build-system]
 requires = ["hatchling"]

@@ -253,7 +253,9 @@ class StructuredFortuneService:
             from datetime import date, timedelta
             yesterday = date.today() - timedelta(days=1)
 
-            response = self.supabase.table("diary_entries").select("content").eq("user_id", user_id).eq("entry_date", yesterday.isoformat()).limit(1).execute()
+            yesterday_start = f"{yesterday.isoformat()}T00:00:00+00:00"
+            today_start = f"{(yesterday + timedelta(days=1)).isoformat()}T00:00:00+00:00"
+            response = self.supabase.table("diary_entries").select("content").eq("user_id", user_id).gte("created_at", yesterday_start).lt("created_at", today_start).order("created_at", desc=True).limit(1).execute()
 
             if not response.data:
                 return ""

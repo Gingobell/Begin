@@ -3,25 +3,23 @@ import {
   ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
+import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 import { NextRequest } from "next/server";
 
-// No local LLM needed — all inference happens on the Python backend.
-// ExperimentalEmptyAdapter is a passthrough; if your CopilotKit version
-// doesn't export it, swap for: new (await import("@copilotkit/runtime")).OpenAIAdapter()
-const serviceAdapter = new ExperimentalEmptyAdapter();
+export const maxDuration = 300;
 
 const runtime = new CopilotRuntime({
-  remoteEndpoints: [
-    {
-      url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/copilotkit",
-    },
-  ],
+  agents: {
+    fortune_diary: new LangGraphHttpAgent({
+      url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/agent",
+    }),
+  },
 });
 
 export const POST = async (req: NextRequest) => {
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
-    serviceAdapter,
+    serviceAdapter: new ExperimentalEmptyAdapter(),
     endpoint: "/api/copilotkit",
   });
   return handleRequest(req);
