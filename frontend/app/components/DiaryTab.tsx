@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getDiaries, createDiary } from "../lib/api";
-import { T } from "../page";
+import { T } from "../lib/theme";
 
 // ── Types ────────────────────────────────────────────────────────
 interface DiaryEntry {

@@ -1,6 +1,6 @@
 "use client";
 
-import { T, ThemeColor } from "../page";
+import { T, ThemeColor } from "../lib/theme";
 
 interface CelestialPanelProps {
   onClose: () => void;

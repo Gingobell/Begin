@@ -22,6 +22,8 @@ GOOGLE_LOCATION = os.environ.get("GOOGLE_LOCATION", "us-central1")
 # AI模型配置
 DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001"
 DEFAULT_CHAT_MODEL = "gemini-3-flash-preview"
+THINKING_ENABLED = os.environ.get("THINKING_ENABLED", "true").lower() == "true"
+THINKING_LEVEL = os.environ.get("THINKING_LEVEL", "HIGH")  # LOW | MEDIUM | HIGH
 
 # Letta配置
 LETTA_BASE_URL = os.environ.get("LETTA_BASE_URL", "http://localhost:8283")

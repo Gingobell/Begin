@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getFortuneStatus, getDailyFortune } from "../lib/api";
-import { T, ThemeColor, categories, navColors } from "../page";
+import { T, ThemeColor, categories, navColors } from "../lib/theme";
 
 // ── Types ────────────────────────────────────────────────────────
 interface BatteryDomain {

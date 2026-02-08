@@ -156,23 +156,48 @@ html, body {
 :root {
   --copilot-kit-primary-color: #FF6B4A;
   --copilot-kit-contrast-color: #ffffff;
-  --copilot-kit-background-color: #FDFBF8;
+  --copilot-kit-background-color: transparent;
   --copilot-kit-secondary-color: #FFF5F0;
   --copilot-kit-secondary-contrast-color: #1E1E1E;
   --copilot-kit-response-button-background-color: #FFF5F0;
   --copilot-kit-response-button-color: #FF6B4A;
-  --copilot-kit-separator-color: rgba(0,0,0,0.04);
+  --copilot-kit-separator-color: transparent;
   --copilot-kit-muted-color: #999999;
+  --copilot-kit-input-background-color: transparent;
 }
 
 .copilotKitHeader { display: none !important; }
 
-.copilotKitMessages {
-  padding: 20px 16px !important;
+/* Chat panel: flex column, fill parent */
+.copilot-chat-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.copilot-chat-inner .copilotKitChat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: transparent !important;
 }
 
-.copilotKitUserMessage {
+/* Messages area: scrollable, fill remaining space */
+.copilotKitMessages {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 16px 16px 8px !important;
+  background: transparent !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.copilotKitMessages::-webkit-scrollbar { display: none !important; }
+
+/* User message: bubble style */
+.copilotKitMessage.copilotKitUserMessage {
   background: linear-gradient(135deg, var(--coral-s), var(--coral-p)) !important;
   color: #fff !important;
   border-radius: 18px 18px 4px 18px !important;
@@ -183,52 +208,86 @@ html, body {
   animation: fadeUp 0.25s ease-out;
 }
 
-.copilotKitAssistantMessage {
-  background: rgba(255,255,255,0.8) !important;
+/* Assistant message: pure text, no bubble */
+.copilotKitMessage.copilotKitAssistantMessage {
+  background: transparent !important;
   color: var(--text-secondary) !important;
-  border: 1px solid rgba(0,0,0,0.04) !important;
-  border-radius: 18px 18px 18px 4px !important;
-  padding: 11px 16px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 4px 2px !important;
   font-size: 13.5px !important;
   line-height: 1.75 !important;
-  max-width: 85% !important;
+  max-width: 92% !important;
   animation: fadeUp 0.25s ease-out;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 .copilotKitAssistantMessage p { margin: 0 0 .5em 0; }
 .copilotKitAssistantMessage p:last-child { margin-bottom: 0; }
 
-.copilotKitInput {
-  border-top: 1px solid rgba(0,0,0,0.03) !important;
+/* Input container: no overlap, stick to bottom */
+.copilotKitInputContainer {
+  flex-shrink: 0 !important;
+  padding: 8px 12px 14px !important;
   background: transparent !important;
-  padding: 10px 16px 16px !important;
 }
 
-.copilotKitInput textarea {
-  background: rgba(255,255,255,0.5) !important;
+/* Input box: clean rounded style, single row layout */
+.copilotKitInput {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255,255,255,0.6) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
   border: 1px solid rgba(0,0,0,0.06) !important;
-  border-radius: 14px !important;
-  padding: 11px 16px !important;
+  border-radius: 22px !important;
+  padding: 8px 12px !important;
+  min-height: 44px !important;
+  transition: border-color .2s, box-shadow .2s;
+}
+.copilotKitInput:focus-within {
+  border-color: var(--coral-p) !important;
+  box-shadow: 0 0 0 3px rgba(255,107,74,0.08) !important;
+}
+
+.copilotKitInput > textarea {
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 0 !important;
   font-size: 13.5px !important;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
   color: var(--text-primary) !important;
   resize: none !important;
-  transition: border-color .2s;
+  max-height: 120px !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
-.copilotKitInput textarea:focus {
-  outline: none !important;
-  border-color: var(--coral-p) !important;
-  box-shadow: 0 0 0 3px rgba(255,107,74,0.08) !important;
-}
+.copilotKitInput > textarea::-webkit-scrollbar { display: none !important; }
 .copilotKitInput textarea::placeholder { color: var(--text-quaternary) !important; }
 
-.copilotKitInputControls button[type="submit"],
-.copilotKitInputControls button {
-  background: linear-gradient(135deg, var(--coral-s), var(--coral-p)) !important;
-  border-radius: 14px !important;
-  transition: opacity .15s !important;
+/* Controls: same row as textarea */
+.copilotKitInputControls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
 }
-.copilotKitInputControls button:hover { opacity: .85 !important; }
+
+/* Send button */
+.copilotKitInputControls .copilotKitInputControlButton:not([disabled]) {
+  color: var(--coral-p) !important;
+}
+
+/* Upload / attachment button */
+.copilotKitInputControlButton {
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
 
 .copilotKitTypingIndicator { color: var(--text-quaternary) !important; }
 
@@ -245,4 +304,26 @@ html, body {
   background: var(--coral-airy) !important;
 }
 
-.copilot-chat-inner { flex: 1; display: flex; flex-direction: column; }
+/* Powered-by footer: hide */
+.poweredByContainer { display: none !important; }
+
+/* ─── Thinking bubble ─── */
+
+@keyframes thinkingPulse {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.thinking-pulse {
+  animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+.thinking-content {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.08) transparent;
+}
+.thinking-content::-webkit-scrollbar { width: 3px; }
+.thinking-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 3px; }
