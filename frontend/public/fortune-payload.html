@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Begin — Fortune & Diary</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+  #fortune-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+  #fortune-scroll::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══════════════════════════════════════════════════════════
+// BEGIN 启 — V8.1 优化版
+// 1. 弥散光球加强（0.58-0.65 主光球）
+// 2. 气泡边框柔和立体化（内阴影 + 外发光）
+// 3. 滚动时背景颜色跟随主题切换
+// ═══════════════════════════════════════════════════════════
+
+const T = {
+  cream: "#FDFBF8",
+  coral: { p: "#FF6B4A", s: "#FF8A6A", soft: "#FFB89A", airy: "#FFF5F0", cream: "#FFFBFA" },
+  blue: { p: "#5C8BFF", s: "#7AA3FF", soft: "#A8C4FF", airy: "#E6F0FF" },
+  purple: { p: "#8F6BF7", s: "#9B7DF9", soft: "#D4C5FF", airy: "#F0ECFF" },
+  honey: { p: "#FFD75A", s: "#FFE073", soft: "#FFEEB0", airy: "#FFFBF0" },
+  career: { p: "#7DD3FC", s: "#9BDFFD", soft: "#C0EBFE", airy: "#EAF8FF", cream: "#F5FAFF" },
+  love:   { p: "#FFB8D0", s: "#FFCBDD", soft: "#FFE0EB", airy: "#FFF6F9", cream: "#FFF8FA" },
+  wealth: { p: "#F2D94D", s: "#F7E36B", soft: "#FAEEB0", airy: "#FDF9E6", cream: "#FFFCF0" },
+  study:  { p: "#7DDFBD", s: "#9BE8CF", soft: "#C0F0E0", airy: "#E8FBF5", cream: "#F5FCF8" },
+  social: { p: "#B8A4FF", s: "#CBBAFE", soft: "#E0D4FF", airy: "#F4F1FF", cream: "#F9F7FF" },
+  text: { primary: "#1E1E1E", secondary: "#4B4B4B", tertiary: "#6F6F6F", quaternary: "#999999" },
+};
+
+const navColors = {
+  overall: { light: "#FF8A6A", dark: "#FF6B4A", text: "#fff" },
+  career:  { light: "#9BDFFD", dark: "#7DD3FC", text: "#1A5A7A" },
+  love:    { light: "#FFCBDD", dark: "#FFB8D0", text: "#8A4A5A" },
+  wealth:  { light: "#F7E36B", dark: "#F2D94D", text: "#5A4A10" },
+  study:   { light: "#9BE8CF", dark: "#7DDFBD", text: "#2A5A4A" },
+  social:  { light: "#CBBAFE", dark: "#B8A4FF", text: "#4A3A6A" },
+};
+
+const candyColors = {
+  overall: { light: "#FF8A6A", dark: "#FF6B4A", shadow: "#FF6B4A", text: "#fff" },
+  career:  { light: "#9BDFFD", dark: "#7DD3FC", shadow: "#7DD3FC", text: "#1A5A7A" },
+  love:    { light: "#FFCBDD", dark: "#FFB8D0", shadow: "#E8A0B8", text: "#5A3A4A" },
+  wealth:  { light: "#F7E36B", dark: "#F2D94D", shadow: "#E8C24A", text: "#5A4A20" },
+  study:   { light: "#9BE8CF", dark: "#7DDFBD", shadow: "#6AC8A8", text: "#2A4A3A" },
+  social:  { light: "#CBBAFE", dark: "#B8A4FF", shadow: "#A090E8", text: "#3A3050" },
+  diary:   { light: "#7AA3FF", dark: "#5C8BFF", shadow: "#5C8BFF", text: "#fff" },
+  purple:  { light: "#8F6BF7", dark: "#7A55E8", shadow: "#7A55E8", text: "#fff" },
+  honey:   { light: "#FFE073", dark: "#FFD75A", shadow: "#E8C24A", text: "#5A4A20" },
+};
+
+const categories = [
+  { key: "overall", label: "Overall", icon: "☀️", theme: T.coral, desc: "Your day at a glance" },
+  { key: "career", label: "Career", icon: "💼", theme: T.career, desc: "Work & ambition" },
+  { key: "love", label: "Love", icon: "💕", theme: T.love, desc: "Heart & connection" },
+  { key: "wealth", label: "Wealth", icon: "💰", theme: T.wealth, desc: "Money & abundance" },
+  { key: "study", label: "Study", icon: "📚", theme: T.study, desc: "Growth & learning" },
+  { key: "social", label: "Social", icon: "👥", theme: T.social, desc: "Friends & community" },
+];
+
+const suggestedQuestions = {
+  overall: ["Is today good for big decisions?", "What should I focus on?", "Should I start something new?", "How to make the most of today?", "What's my energy peak?"],
+  career: ["Should I bring up the promotion?", "Best time for presentations?", "When to schedule the meeting?", "Take on more responsibility?", "How to impress my boss?"],
+  love: ["Should I reach out first?", "Good day for the big talk?", "How to deepen the connection?", "Give them space today?", "Is romance in the air?"],
+  wealth: ["Good day for investments?", "Should I make the purchase?", "When does financial luck peak?", "Budget meeting approach?", "Side hustle energy today?"],
+  study: ["Best study time today?", "Start the new course now?", "How to improve focus?", "Good day for creative work?", "Exam prep strategy?"],
+  social: ["Attend the event tonight?", "Good day for networking?", "Handle this conflict how?", "Who to reconnect with?", "Party or stay in?"],
+};
+
+const mockFortunes = {
+  overall: { score: 82, summary: "Your persuasion energy peaks before noon. Lead with the bold opening you rehearsed — confidence is unusually strong today.", bestMove: "Present your proposal in the morning meeting.", watch: "Avoid financial commitments after 3pm.", recharge: "A short walk outdoors between 2-3pm." },
+  career: { score: 88, summary: "Strong leadership energy. Natural to take charge in group settings. Ideas land well with senior stakeholders.", bestMove: "Schedule your most important meeting before lunch.", watch: "Don't over-commit to new projects.", recharge: "Review your wins from this week." },
+  love: { score: 71, summary: "Gentle, receptive energy. Good for deepening connections rather than bold moves. Listen more than you speak.", bestMove: "Send a thoughtful message to someone you care about.", watch: "Avoid unresolved conflicts today.", recharge: "Cook a meal for someone special." },
+  wealth: { score: 65, summary: "Steady, conservative financial energy. Focus on reviewing budgets and long-term plans.", bestMove: "Audit your subscriptions — you'll spot hidden savings.", watch: "Sleep on anything over $100.", recharge: "Read about a financial topic you're curious about." },
+  study: { score: 90, summary: "Exceptional focus and retention. Your mind is a sponge — tackle that complex material you've been avoiding.", bestMove: "Block 2 hours for deep learning this morning.", watch: "Don't multitask. Single-thread for best results.", recharge: "Teach someone what you learned." },
+  social: { score: 76, summary: "Warm, approachable energy. People are naturally drawn to your vibe today — use it wisely.", bestMove: "Reach out to someone you haven't spoken to in a while.", watch: "Quality over quantity — don't spread thin.", recharge: "End the day with quiet time to reflect." },
+};
+const mockTarot = { name: "The Star", orientation: "Upright", meaning: "Hope, faith, renewal — clarity follows turbulence." };
+const mockBazi = { dayMaster: "Bing Fire", stem: "Warmth amplifies communication." };
+
+const initialDiaries = [
+  { id: "1", date: "Feb 7", mood: 4, title: "Big client meeting prep", content: "Spent 2 hours refining the proposal deck. Feeling nervous but excited.", aiReply: "Fortune shows strong persuasion energy peaking in the morning.", tags: ["work"] },
+  { id: "2", date: "Feb 6", mood: 3, title: "Quiet Thursday", content: "Worked on quarterly report, evening run. Thinking about the promotion talk.", aiReply: "Fortune suggests next Tuesday for the promotion talk.", tags: ["reflection"] },
+  { id: "3", date: "Feb 5", mood: 5, title: "Birthday dinner 🎂", content: "Amazing dinner with friends! Surprise video montage.", aiReply: "Gratitude is one of your strongest patterns — ride the wave.", tags: ["birthday"] },
+];
+
+const glassCard = (x={}) => ({
+  background: "rgba(255,255,255,0.85)",
+  border: "1px solid rgba(255,255,255,0.5)",
+  borderRadius: 24,
+  boxShadow: "0 6px 12px rgba(0,0,0,0.05)",
+  ...x,
+});
+
+const candyBtn = (key, full) => {
+  const c = candyColors[key] || candyColors.overall;
+  return {
+    background: `linear-gradient(to right, ${c.light}, ${c.dark})`,
+    color: c.text, border: "none", borderRadius: 20,
+    padding: full ? "14px 28px" : "10px 22px",
+    fontSize: 14, fontWeight: 500, cursor: "pointer",
+    boxShadow: `0 8px 16px ${c.shadow}3D`,
+    transition: "all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+    fontFamily: "inherit",
+    ...(full ? { width: "100%", textAlign: "center" } : {}),
+  };
+};
+
+const glassBtn = (tint) => ({
+  background: "rgba(255,255,255,0.75)",
+  border: `1px solid ${tint}40`,
+  borderRadius: 100, padding: "12px 24px",
+  fontSize: 14, fontWeight: 500, cursor: "pointer",
+  color: tint, boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+  fontFamily: "inherit",
+});
+
+function ScoreRing({ score, theme, size = 56 }) {
+  const sw = 5, r = (size-sw*2)/2, c = 2*Math.PI*r;
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`${theme.soft}30`} strokeWidth={sw} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`url(#grad-${score})`} strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c*(1-score/100)} style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.2,0.8,0.2,1)", filter: `drop-shadow(0 0 4px ${theme.p}30)` }} />
+        <defs>
+          <linearGradient id={`grad-${score}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={theme.s} />
+            <stop offset="100%" stopColor={theme.p} />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: "'Fraunces',serif", fontSize: size*0.3, fontWeight: 600, color: theme.p, lineHeight: 1 }}>{score}</span>
+      </div>
+    </div>
+  );
+}
+
+function TarotDraw({ onDraw, theme }) {
+  const [phase, setPhase] = useState("fan");
+  const [sel, setSel] = useState(null);
+  const timersRef = useRef([]);
+
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout); };
+  }, []);
+
+  const schedule = (fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+  };
+
+  const draw = (i) => {
+    if (phase !== "fan") return;
+    setSel(i);
+    setPhase("lifting");
+    schedule(() => setPhase("flipping"), 1400);
+    schedule(() => setPhase("centered"), 2800);
+    schedule(() => setPhase("revealed"), 3600);
+    schedule(() => onDraw(), 5600);
+  };
+
+  return (
+    <div style={{ ...glassCard({ padding: "44px 28px", textAlign: "center", borderRadius: 26, gridColumn: "1 / -1" }) }}>
+      <div style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 400, marginBottom: 6 }}>
+        {phase === "fan" ? "Draw your daily card" : phase === "revealed" ? "Your card is here" : "Revealing..."}
+      </div>
+      <div style={{ fontSize: 13, color: T.text.quaternary, marginBottom: 32 }}>
+        {phase === "fan" ? "Tap a card that calls to you" : phase === "revealed" ? "Take this message with you today" : "The deck is turning..."}
+      </div>
+
+      <div style={{ position: "relative", width: 320, height: 240, margin: "0 auto" }}>
+        {[0, 1, 2, 3, 4].map(i => {
+          const ang = (i - 2) * 10;
+          const ox = (i - 2) * 26;
+          const picked = i === sel;
+          const center = i === 2;
+          const finalStage = phase === "centered" || phase === "revealed";
+          const hideOther = !picked && finalStage;
+          const fanTransform = `translate(-50%,0) rotate(${ang}deg) translateX(${ox}px)`;
+          const showingFront = picked && (phase === "flipping" || phase === "centered" || phase === "revealed");
+
+          let cardTransform = fanTransform;
+          if (picked) {
+            if (phase === "lifting") cardTransform = "translate(-50%,-36px) scale(1.14)";
+            if (phase === "flipping") cardTransform = "translate(-50%,-54px) scale(1.16)";
+            if (finalStage) cardTransform = "translate(-50%,-30px) scale(1.22)";
+          } else if (hideOther) {
+            cardTransform = `translate(-50%,10px) rotate(${ang * 0.45}deg) translateX(${ox * 0.45}px) scale(0.82)`;
+          }
+
+          return (
+            <div
+              key={i}
+              onClick={() => draw(i)}
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: finalStage ? 20 : 0,
+                width: 86,
+                height: 136,
+                borderRadius: 16,
+                cursor: phase === "fan" ? "pointer" : "default",
+                transform: cardTransform,
+                transformOrigin: "bottom center",
+                opacity: hideOther ? 0 : 1,
+                pointerEvents: hideOther ? "none" : "auto",
+                transition: "transform 1.1s cubic-bezier(0.2,0.8,0.2,1), opacity 0.8s ease, box-shadow 0.8s ease, bottom 1s cubic-bezier(0.2,0.8,0.2,1)",
+                zIndex: picked ? 14 : 6 - Math.abs(i - 2),
+                boxShadow: picked && finalStage
+                  ? `0 0 0 1px ${T.coral.soft}B5, 0 0 34px ${T.coral.s}6B, 0 18px 42px ${T.coral.p}24`
+                  : picked
+                    ? `0 14px 30px ${T.coral.p}20`
+                    : phase === "fan" && center
+                      ? `0 0 0 1px ${T.coral.soft}B0, 0 0 30px ${T.coral.s}66, 0 10px 24px ${T.coral.p}22`
+                      : "0 6px 16px rgba(60,72,68,0.14)",
+                animation: phase === "fan" && center ? "healingCardGlow 2.6s ease-in-out infinite" : "none",
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: "100%",
+                  transformStyle: "preserve-3d",
+                  transition: "transform 1.08s cubic-bezier(0.2,0.8,0.2,1)",
+                  transform: showingFront ? "rotateY(180deg)" : "rotateY(0deg)",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: 16,
+                    backfaceVisibility: "hidden",
+                    background: phase === "fan" && center
+                      ? `linear-gradient(150deg, rgba(255,255,255,0.97), ${T.coral.airy}, ${T.coral.soft}38)`
+                      : `linear-gradient(148deg, rgba(255,255,255,0.96), ${T.coral.airy})`,
+                    border: `1px solid ${T.coral.soft}92`,
+                    backdropFilter: "blur(14px)",
+                    WebkitBackdropFilter: "blur(14px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 ${T.coral.soft}52`,
+                  }}
+                >
+                  <span style={{ fontSize: center ? 17 : 15, color: phase === "fan" && center ? `${T.coral.p}A8` : `${T.coral.s}88` }}>
+                    {center ? "✦✦" : "✦"}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: 16,
+                    transform: "rotateY(180deg)",
+                    backfaceVisibility: "hidden",
+                    background: `linear-gradient(150deg, rgba(255,255,255,0.98), ${T.coral.airy}, ${T.coral.soft}40)`,
+                    border: `1px solid ${T.coral.soft}9A`,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.9), 0 0 26px ${T.coral.s}6A`,
+                  }}
+                >
+                  <span style={{ fontSize: 28, lineHeight: 1, color: T.coral.p }}>⭐</span>
+                  <span style={{ fontSize: 10.5, letterSpacing: "0.08em", fontWeight: 700, color: T.coral.p }}>
+                    {mockTarot.name.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {phase === "revealed" && (
+        <div style={{ marginTop: 18, animation: "tarotNameIn 0.8s ease" }}>
+          <div style={{ fontSize: 11, color: T.text.quaternary, letterSpacing: "0.08em", textTransform: "uppercase" }}>Today's Tarot</div>
+          <div style={{ fontFamily: "'Fraunces',serif", fontSize: 21, color: T.coral.p, marginTop: 6 }}>{mockTarot.name}</div>
+          <div style={{ fontSize: 12.5, color: T.text.tertiary, marginTop: 3 }}>{mockTarot.orientation}</div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes healingCardGlow{
+          0%,100%{filter:brightness(1) drop-shadow(0 0 0 ${T.coral.s}00)}
+          50%{filter:brightness(1.06) drop-shadow(0 0 10px ${T.coral.s}66)}
+        }
+        @keyframes tarotNameIn{
+          from{opacity:0;transform:translateY(8px)}
+          to{opacity:1;transform:translateY(0)}
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function TopNav({ tab, onTab, onProfile, theme }) {
+  return (
+    <div style={{ height: 56, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", background: "rgba(253,251,248,0.75)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderBottom: "1px solid rgba(0,0,0,0.025)", zIndex: 40, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 11, background: `linear-gradient(135deg,${T.coral.s},${T.coral.p})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "'Fraunces',serif", boxShadow: `0 3px 12px ${T.coral.p}20` }}>B</div>
+        <span style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500, color: T.text.primary }}>Begin</span>
+      </div>
+      <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.03)", borderRadius: 14, padding: 3 }}>
+        {[{key:"fortune",label:"Fortune",icon:"✨"},{key:"diary",label:"Diary",icon:"📝"}].map(t => {
+          const a=t.key===tab;
+          return <button key={t.key} onClick={()=>onTab(t.key)} style={{ padding: "8px 24px", borderRadius: 11, border: "none", cursor: "pointer", fontSize: 13, fontWeight: a?600:500, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)", color: a?T.text.primary:T.text.tertiary, background: a?"rgba(255,255,255,0.92)":"transparent", boxShadow: a?"0 1px 8px rgba(0,0,0,0.04)":"none" }}><span style={{ fontSize: 13 }}>{t.icon}</span> {t.label}</button>;
+        })}
+      </div>
+      <button onClick={onProfile} style={{ width: 34, height: 34, borderRadius: 12, border: "none", cursor: "pointer", background: `linear-gradient(135deg,${theme.airy},${theme.soft}50)`, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 6px rgba(0,0,0,0.03)" }}>👤</button>
+    </div>
+  );
+}
+
+function FullFortuneCard({ cat, fortune, theme }) {
+  const insights = [
+    { t: "Best Move", x: fortune.bestMove },
+    { t: "Watch Out", x: fortune.watch },
+    { t: "Recharge", x: fortune.recharge },
+  ];
+
+  return (
+    <div style={{
+      borderRadius: 24, overflow: "hidden",
+      background: "rgba(255,255,255,0.72)",
+      backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+      border: "none",
+      boxShadow: `0 2px 4px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.06), 0 16px 48px ${theme.p}0A, inset 0 1px 0 rgba(255,255,255,0.6)`,
+      transition: "box-shadow 0.4s ease, background 0.6s ease",
+    }}>
+      <div style={{ padding: "26px 26px 20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 50, height: 50, borderRadius: 18,
+              background: `${theme.soft}45`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 26,
+            }}>{cat.icon}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: T.text.primary }}>{cat.label}</div>
+              <div style={{ fontSize: 12, color: T.text.quaternary, marginTop: 2 }}>{cat.desc}</div>
+            </div>
+          </div>
+          <ScoreRing score={fortune.score} theme={theme} size={64} />
+        </div>
+        <p style={{ fontSize: 15, lineHeight: 1.85, color: T.text.secondary, margin: 0 }}>{fortune.summary}</p>
+      </div>
+
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {insights.map((c, i) => (
+          <div key={i} style={{
+            padding: "18px 20px", borderRadius: 20,
+            background: `linear-gradient(135deg, ${theme.airy}, ${theme.soft}22)`,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.p, marginBottom: 8 }}>
+              {c.t}
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 1.8, color: T.text.secondary }}>{c.x}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CelestialPanel({ onClose, theme }) {
+  const cTheme = theme || T.purple;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      <div style={{ padding: "18px 22px 14px", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>✨</span>
+          <span style={{ fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 500 }}>Today's Celestial</span>
+        </div>
+        <button onClick={onClose} style={{ background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 10, width: 32, height: 32, fontSize: 14, cursor: "pointer", color: T.text.tertiary, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.07)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
+        >✕</button>
+      </div>
+
+      <div style={{ flex: 1, overflow: "auto", padding: "20px 18px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{
+            ...glassCard({ borderRadius: 22, padding: "22px 20px" }),
+            background: `linear-gradient(150deg, ${cTheme.airy}, rgba(255,255,255,0.5))`,
+            border: `1px solid ${cTheme.soft}22`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 16,
+                background: `linear-gradient(135deg, ${cTheme.soft}40, ${cTheme.airy})`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+              }}>⭐</div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: cTheme.p }}>{mockTarot.name}</div>
+                <div style={{ fontSize: 12, color: cTheme.s, marginTop: 2 }}>{mockTarot.orientation}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13.5, lineHeight: 1.75, color: T.text.secondary, margin: 0 }}>{mockTarot.meaning}</p>
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.45)", border: `1px solid ${cTheme.soft}15` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: cTheme.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>How it affects you</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.65, color: T.text.tertiary }}>The Star brings renewed optimism. Trust the process today — what feels uncertain is actually unfolding in your favor.</div>
+            </div>
+          </div>
+
+          <div style={{
+            ...glassCard({ borderRadius: 22, padding: "22px 20px" }),
+            background: `linear-gradient(150deg, ${T.coral.airy}, rgba(255,255,255,0.5))`,
+            border: `1px solid ${T.coral.soft}22`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 16,
+                background: `linear-gradient(135deg, ${T.coral.soft}40, ${T.coral.airy})`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+              }}>☯️</div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: T.coral.p }}>BaZi · Day Master</div>
+                <div style={{ fontSize: 12, color: T.coral.s, marginTop: 2 }}>{mockBazi.dayMaster}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13.5, lineHeight: 1.75, color: T.text.secondary, margin: 0 }}>{mockBazi.stem}</p>
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.45)", border: `1px solid ${T.coral.soft}15` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.coral.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Today's pillars</div>
+              <div style={{ fontSize: 13, color: T.text.tertiary, lineHeight: 1.6, fontFamily: "inherit" }}>
+                <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 8, background: `${T.coral.airy}`, marginRight: 6, marginBottom: 4, fontSize: 12.5 }}>Yi-Hai</span>
+                <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 8, background: `${T.coral.airy}`, marginRight: 6, marginBottom: 4, fontSize: 12.5 }}>Ren-Wu</span>
+                <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 8, background: `${T.coral.airy}`, marginRight: 6, marginBottom: 4, fontSize: 12.5 }}>Bing-Yin</span>
+                <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 8, background: `${T.coral.airy}`, marginBottom: 4, fontSize: 12.5 }}>Gui-Si</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            ...glassCard({ borderRadius: 22, padding: "22px 20px" }),
+            background: `linear-gradient(150deg, ${T.honey.airy}, rgba(255,255,255,0.5))`,
+            border: `1px solid ${T.honey.soft}22`,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.text.primary, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🔥</span> Elemental Energy
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { name: "Fire", pct: 75, color: T.coral.p },
+                { name: "Water", pct: 40, color: T.blue.p },
+                { name: "Wood", pct: 55, color: "#5DD9AC" },
+                { name: "Metal", pct: 30, color: T.text.quaternary },
+                { name: "Earth", pct: 60, color: T.honey.p },
+              ].map(el => (
+                <div key={el.name}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: T.text.tertiary, marginBottom: 4 }}>
+                    <span>{el.name}</span><span style={{ fontWeight: 600, color: el.color }}>{el.pct}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: "rgba(0,0,0,0.04)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 3, width: `${el.pct}%`, background: `linear-gradient(90deg, ${el.color}90, ${el.color})`, transition: "width 1s cubic-bezier(0.2,0.8,0.2,1)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategorySidebar({ selected, onSelect }) {
+  return (
+    <div style={{
+      width: 84, flexShrink: 0,
+      display: "flex", flexDirection: "column", alignItems: "center",
+      padding: "24px 0", gap: 14,
+      background: "rgba(255,255,255,0.35)",
+      backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+      borderRight: "1px solid rgba(255,255,255,0.4)",
+      position: "sticky", top: 0, height: "100%", overflow: "auto",
+    }}>
+      {categories.map(c => {
+        const a = c.key === selected;
+        const nc = navColors[c.key];
+        return (
+          <button key={c.key} onClick={() => onSelect(c.key)} title={c.label} style={{
+            width: 56, height: 56, borderRadius: 20, cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            gap: 4, fontFamily: "inherit",
+            transition: "all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+            ...(a ? {
+              background: `linear-gradient(145deg, ${nc.light}50, ${nc.dark}30)`,
+              border: `1px solid ${nc.light}60`,
+              boxShadow: `0 4px 12px ${nc.dark}18, inset 0 1px 0 rgba(255,255,255,0.7)`,
+              color: nc.text,
+            } : {
+              background: "rgba(255,255,255,0.45)",
+              border: "1px solid rgba(255,255,255,0.5)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)",
+              color: "rgba(0,0,0,0.45)",
+            }),
+          }}>
+            <span style={{ fontSize: 20 }}>{c.icon}</span>
+            <span style={{ fontSize: 9.5, fontWeight: a ? 600 : 500, opacity: a ? 1 : 0.74 }}>{c.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🔧 优化 2: 气泡边框柔和立体化
+// - 移除硬边框包裹层
+// - 改用半透明白 + 内阴影 + 外发光
+// ═══════════════════════════════════════════════════════════
+function BreathBlobs({ questions, theme, onBubbleClick }) {
+  const [customQ, setCustomQ] = useState("");
+  const radii = ["26px 18px 24px 16px","18px 26px 16px 24px","24px 16px 26px 18px","16px 24px 18px 26px","22px 18px 26px 16px"];
+
+  const handleCustomSend = () => {
+    const q = customQ.trim();
+    if (!q) return;
+    onBubbleClick(q);
+    setCustomQ("");
+  };
+
+  return (
+    <div style={{ width: 320, height: "100%", flexShrink: 0, position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", padding: "144px 16px 18px", overflow: "hidden" }}>
+      {/* 背景弥散光球 */}
+      <div style={{ position: "absolute", top: "8%", left: "10%", width: 160, height: 160, borderRadius: "50%", background: `${theme.soft}25`, filter: "blur(50px)", animation: "blobGlow 8s ease-in-out infinite", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "12%", right: "5%", width: 130, height: 130, borderRadius: "50%", background: `${theme.soft}20`, filter: "blur(45px)", animation: "blobGlow 10s ease-in-out 3s infinite", pointerEvents: "none" }} />
+      
+      {/* Quick Ask 标题区 */}
+      <div style={{ paddingBottom: 10, zIndex: 2, flexShrink: 0 }}>
+        <div style={{ fontSize: 18, fontWeight: 600, fontFamily: "'Fraunces',serif", color: T.text.primary, marginBottom: 12 }}>
+          ? Quick Ask
+        </div>
+        <div style={{ fontSize: 13, color: T.text.quaternary, lineHeight: 1.45 }}>
+          Ask about today
+        </div>
+      </div>
+
+      {/* 自定义输入框 */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, zIndex: 2, flexShrink: 0 }}>
+        <input
+          value={customQ}
+          onChange={e => setCustomQ(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleCustomSend()}
+          placeholder="What's on your mind?"
+          style={{
+            flex: 1, padding: "10px 14px", borderRadius: 16,
+            border: `1px solid ${theme.soft}40`,
+            background: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            fontSize: 12.5, color: T.text.secondary, outline: "none",
+            fontFamily: "inherit",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
+            transition: "border-color 0.25s, box-shadow 0.25s",
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = `${theme.p}50`; e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 3px ${theme.p}10`; }}
+          onBlur={e => { e.currentTarget.style.borderColor = `${theme.soft}40`; e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.7)"; }}
+        />
+        <button onClick={handleCustomSend} style={{
+          width: 36, height: 36, borderRadius: 14, border: "none", cursor: "pointer", flexShrink: 0,
+          background: customQ.trim() ? `linear-gradient(135deg, ${theme.soft}80, ${theme.p}40)` : "rgba(255,255,255,0.5)",
+          color: customQ.trim() ? theme.p : T.text.quaternary,
+          fontSize: 14, fontWeight: 600,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "all 0.25s ease",
+          boxShadow: customQ.trim() ? `0 2px 8px ${theme.p}15` : "none",
+        }}>↑</button>
+      </div>
+
+      {/* 分隔线 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, zIndex: 2, flexShrink: 0 }}>
+        <div style={{ flex: 1, height: 1, background: `${theme.soft}30` }} />
+        <span style={{ fontSize: 10, fontWeight: 600, color: T.text.quaternary, letterSpacing: "0.08em", textTransform: "uppercase" }}>Or tap a thought</span>
+        <div style={{ flex: 1, height: 1, background: `${theme.soft}30` }} />
+      </div>
+
+      {/* 气泡区域 */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 2, flexShrink: 0 }}>
+        {questions.slice(0,5).map((q,i) => (
+          <div key={i} onClick={() => onBubbleClick(q)} style={{
+            padding: "11px 16px",
+            borderRadius: radii[i],
+            background: `linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.85))`,
+            backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            boxShadow: `
+              0 1px 0 0 rgba(255,255,255,0.8) inset,
+              0 -1px 1px 0 ${theme.p}12 inset,
+              0 4px 14px ${theme.p}18,
+              0 1px 3px rgba(0,0,0,0.05)
+            `,
+            border: `1px solid ${theme.soft}28`,
+            cursor: "pointer",
+            animation: `blobBreathe ${3+i*0.4}s ease-in-out ${i*0.3}s infinite`,
+            transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
+            width: "fit-content", maxWidth: 240,
+            alignSelf: i%2===0 ? "flex-start" : "flex-end",
+            zIndex: 3,
+            fontSize: 12.5, lineHeight: 1.55, color: T.text.secondary, fontFamily: "inherit",
+          }}
+            onMouseEnter={e => { 
+              e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"; 
+              e.currentTarget.style.boxShadow = `
+                0 1px 0 0 rgba(255,255,255,0.9) inset,
+                0 -1px 2px 0 ${theme.p}20 inset,
+                0 8px 28px ${theme.p}28,
+                0 2px 6px rgba(0,0,0,0.08)
+              `; 
+              e.currentTarget.style.animationPlayState = "paused"; 
+            }}
+            onMouseLeave={e => { 
+              e.currentTarget.style.transform = ""; 
+              e.currentTarget.style.boxShadow = `
+                0 1px 0 0 rgba(255,255,255,0.8) inset,
+                0 -1px 1px 0 ${theme.p}12 inset,
+                0 4px 14px ${theme.p}18,
+                0 1px 3px rgba(0,0,0,0.05)
+              `; 
+              e.currentTarget.style.animationPlayState = "running"; 
+            }}
+          >
+            <span style={{ color: theme.p, marginRight: 7, fontWeight: 600 }}>→</span>{q}
+          </div>
+        ))}
+      </div>
+      <style>{`
+        @keyframes blobBreathe{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.018) translateY(-3px)}}
+        @keyframes blobGlow{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.12)}}
+      `}</style>
+    </div>
+  );
+}
+
+function QuickAskPanel({ category, theme, initialQuestion, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef(null);
+  const questions = suggestedQuestions[category]||suggestedQuestions.overall;
+  const hasSent = useRef(false);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { if (initialQuestion&&!hasSent.current) { hasSent.current=true; sendMsg(initialQuestion); } }, [initialQuestion]);
+  const sendMsg = async (text) => {
+    const q=(text||input).trim(); if(!q||loading) return;
+    setMessages(m=>[...m,{role:"user",text:q}]); setInput(""); setLoading(true);
+    await new Promise(r=>setTimeout(r,1100));
+    const reply = `Based on your BaZi (Bing Fire) and The Star, ${q.toLowerCase().includes("should")?"cosmic alignment supports this":"here's your reading"}: Your ${category==="career"?"professional":category==="love"?"emotional":"mental"} energy is strong this morning. ${q.length>20?"Timing before noon is ideal.":"Trust your instincts."} Diary patterns show a confidence uptrend.`;
+    setMessages(m=>[...m,{role:"ai",text:reply}]); setLoading(false);
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      <div style={{ padding: "18px 22px 14px", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>?</span><span style={{ fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 500 }}>Quick Ask</span></div>
+        <button onClick={onClose} style={{ background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 10, width: 32, height: 32, fontSize: 14, cursor: "pointer", color: T.text.tertiary, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      </div>
+      <div style={{ flex: 1, overflow: "auto", padding: "16px 18px", minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {messages.map((m,i) => (
+            <div key={i} style={{ alignSelf: m.role==="user"?"flex-end":"flex-start", maxWidth: "82%" }}>
+              <div style={{ padding: "11px 16px", fontSize: 13.5, lineHeight: 1.75, borderRadius: m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", ...(m.role==="user"?{background:`linear-gradient(135deg,${theme.s},${theme.p})`,color:"#fff"}:{background:"rgba(255,255,255,0.8)",color:T.text.secondary,border:"1px solid rgba(0,0,0,0.04)"}) }}>{m.text}</div>
+            </div>
+          ))}
+          {loading && <div style={{ alignSelf: "flex-start", padding: "11px 16px", borderRadius: "18px 18px 18px 4px", background: "rgba(255,255,255,0.75)", fontSize: 13, color: T.text.quaternary }}>Reading the stars<span style={{ animation: "pulse 1.4s ease-in-out infinite" }}>...</span></div>}
+          <div ref={endRef} />
+        </div>
+        {messages.length>0&&!loading && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+            {questions.filter(q=>!messages.some(m=>m.text===q)).slice(0,3).map((q,i) => (
+              <button key={i} onClick={()=>sendMsg(q)} style={{ padding: "7px 14px", borderRadius: 100, fontSize: 12, background: theme.airy, border: `1px solid ${theme.soft}30`, color: theme.p, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>{q}</button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ padding: "10px 16px 16px", flexShrink: 0, display: "flex", gap: 8, borderTop: "1px solid rgba(0,0,0,0.03)" }}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Ask about your day..." style={{ flex: 1, padding: "11px 16px", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", fontSize: 13.5, background: "rgba(255,255,255,0.5)", outline: "none", fontFamily: "inherit" }} />
+        <button onClick={()=>sendMsg()} disabled={loading||!input.trim()} style={{ background: `linear-gradient(135deg,${theme.s},${theme.p})`, color: "#fff", border: "none", borderRadius: 14, width: 40, height: 40, fontSize: 16, cursor: "pointer", opacity: loading||!input.trim()?0.3:1, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>↑</button>
+      </div>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+    </div>
+  );
+}
+
+function DiaryView({ diaries, onSelect }) {
+  const moods = ["","😢","😔","😐","🙂","😊"];
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <div><h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 24, fontWeight: 500, margin: 0 }}>My Diary</h2><p style={{ fontSize: 13, color: T.text.quaternary, marginTop: 6 }}>{diaries.length} entries</p></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+        {diaries.map(d => (
+          <div key={d.id} onClick={()=>onSelect(d)} style={{ ...glassCard({ borderRadius: 22, padding: 20, cursor: "pointer" }) }}
+            onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 12px 36px rgba(0,0,0,0.06)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><span style={{ fontSize: 24 }}>{moods[d.mood]}</span><span style={{ fontSize: 12, color: T.text.quaternary }}>{d.date}</span></div>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{d.title}</div>
+            <p style={{ fontSize: 13, lineHeight: 1.65, color: T.text.tertiary, margin: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>{d.content}</p>
+            {d.aiReply && <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 12, background: T.blue.airy, borderLeft: `2px solid ${T.blue.p}`, fontSize: 12, lineHeight: 1.5, color: T.text.tertiary }}>{d.aiReply}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DiaryChatPanel({ onClose, onSave }) {
+  const [messages, setMessages] = useState([
+    { role: "ai", text: "Hi! 💙 How was your day? Tell me anything — a highlight, something that bugged you, or just how you're feeling right now." },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const endRef = useRef(null);
+  const collected = useRef({ texts: [], mood: null });
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const aiResponses = [
+    { check: () => collected.current.texts.length === 1, reply: (t) => `${t.length > 30 ? "Thank you for sharing that." : "Got it."} What else happened today? Any small moment that stuck with you?` },
+    { check: () => collected.current.texts.length === 2, reply: () => "That's a nice picture of your day forming. How would you rate your overall mood? Pick one:" },
+    { check: () => collected.current.mood !== null, reply: () => {
+      const m = collected.current.mood;
+      return `${m >= 4 ? "Wonderful! That positive energy carries forward." : m >= 3 ? "A balanced day — those matter too." : "I hear you. Tomorrow is a fresh page."} I've saved your diary entry. Your fortune will be smarter tomorrow because of this. ✨`;
+    }},
+    { check: () => true, reply: () => "Anything else you'd like to add? Or we can wrap up and save." },
+  ];
+
+  const send = async (text) => {
+    const q = (text || input).trim();
+    if (!q || loading) return;
+    setMessages(m => [...m, { role: "user", text: q }]);
+    setInput(""); setLoading(true);
+    collected.current.texts.push(q);
+
+    await new Promise(r => setTimeout(r, 800));
+
+    const handler = aiResponses.find(h => h.check());
+    const reply = handler ? handler.reply(q) : "Thanks for sharing! I'll remember this for your fortune.";
+    setMessages(m => [...m, { role: "ai", text: reply }]);
+    setLoading(false);
+
+    if (collected.current.mood !== null && !saved) {
+      setSaved(true);
+      const allText = collected.current.texts.join(". ");
+      onSave({
+        id: Date.now().toString(),
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        mood: collected.current.mood,
+        title: allText.slice(0, 40) + (allText.length > 40 ? "..." : ""),
+        content: allText,
+        aiReply: reply,
+        tags: [],
+      });
+    }
+  };
+
+  const selectMood = (m) => {
+    collected.current.mood = m;
+    const moodEmojis = ["","😢","😔","😐","🙂","😊"];
+    setMessages(prev => [...prev, { role: "user", text: moodEmojis[m] }]);
+    setLoading(true);
+    setTimeout(() => {
+      const handler = aiResponses.find(h => h.check());
+      const reply = handler ? handler.reply("") : "Saved!";
+      setMessages(prev => [...prev, { role: "ai", text: reply }]);
+      setLoading(false);
+      setSaved(true);
+      const allText = collected.current.texts.join(". ");
+      onSave({
+        id: Date.now().toString(),
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        mood: m,
+        title: allText.slice(0, 40) + (allText.length > 40 ? "..." : ""),
+        content: allText,
+        aiReply: reply,
+        tags: [],
+      });
+    }, 700);
+  };
+
+  const showMoodPicker = collected.current.texts.length >= 2 && collected.current.mood === null && !loading;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      <div style={{ padding: "18px 22px 14px", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>📝</span>
+          <span style={{ fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 500 }}>Diary Chat</span>
+        </div>
+        <button onClick={onClose} style={{ background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 10, width: 32, height: 32, fontSize: 14, cursor: "pointer", color: T.text.tertiary, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.07)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
+        >✕</button>
+      </div>
+
+      <div style={{ flex: 1, overflow: "auto", padding: "16px 18px", minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {messages.map((m, i) => (
+            <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%" }}>
+              <div style={{
+                padding: "11px 16px", fontSize: 13.5, lineHeight: 1.75,
+                borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                ...(m.role === "user"
+                  ? { background: `linear-gradient(135deg, ${T.blue.s}, ${T.blue.p})`, color: "#fff" }
+                  : { background: "rgba(255,255,255,0.8)", color: T.text.secondary, border: "1px solid rgba(0,0,0,0.04)" }),
+              }}>{m.text}</div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ alignSelf: "flex-start", padding: "11px 16px", borderRadius: "18px 18px 18px 4px", background: "rgba(255,255,255,0.75)", fontSize: 13, color: T.text.quaternary }}>
+              Thinking<span style={{ animation: "pulse 1.4s ease-in-out infinite" }}>...</span>
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+
+        {showMoodPicker && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16, animation: "slideUp 0.3s ease" }}>
+            {["😢","😔","😐","🙂","😊"].map((m, i) => (
+              <button key={i} onClick={() => selectMood(i + 1)} style={{
+                fontSize: 28, padding: "8px 10px", borderRadius: 16,
+                background: "rgba(255,255,255,0.6)", border: `2px solid ${T.blue.soft}30`,
+                cursor: "pointer", transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2) translateY(-4px)"; e.currentTarget.style.borderColor = T.blue.p; e.currentTarget.style.background = T.blue.airy; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = `${T.blue.soft}30`; e.currentTarget.style.background = "rgba(255,255,255,0.6)"; }}
+              >{m}</button>
+            ))}
+          </div>
+        )}
+
+        {saved && (
+          <div style={{ textAlign: "center", marginTop: 16, padding: "10px 16px", borderRadius: 14, background: `${T.study.airy}`, border: `1px solid ${T.study.soft}30`, fontSize: 12.5, color: T.study.p, fontWeight: 600, animation: "slideUp 0.3s ease" }}>
+            ✅ Entry saved to your diary
+          </div>
+        )}
+      </div>
+
+      {!saved && (
+        <div style={{ padding: "10px 16px 16px", flexShrink: 0, display: "flex", gap: 8, borderTop: "1px solid rgba(0,0,0,0.03)" }}>
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
+            placeholder={showMoodPicker ? "Or type how you feel..." : "Tell me about your day..."}
+            style={{ flex: 1, padding: "11px 16px", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", fontSize: 13.5, background: "rgba(255,255,255,0.5)", outline: "none", fontFamily: "inherit" }}
+            onFocus={e => e.currentTarget.style.borderColor = `${T.blue.p}30`}
+            onBlur={e => e.currentTarget.style.borderColor = "rgba(0,0,0,0.06)"}
+          />
+          <button onClick={() => send()} disabled={loading || !input.trim()} style={{
+            background: `linear-gradient(135deg, ${T.blue.s}, ${T.blue.p})`, color: "#fff",
+            border: "none", borderRadius: 14, width: 40, height: 40, fontSize: 16,
+            cursor: "pointer", opacity: loading || !input.trim() ? 0.3 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            transition: "opacity 0.2s",
+          }}>↑</button>
+        </div>
+      )}
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+      `}</style>
+    </div>
+  );
+}
+
+function ProfileModal({ onClose, count }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.12)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={e=>{if(e.target===e.currentTarget) onClose();}}>
+      <div style={{ ...glassCard({ borderRadius: 28, maxWidth: 380, width: "100%", padding: 32 }), background: "rgba(255,255,255,0.88)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}><h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Profile</h2><button onClick={onClose} style={{ background: "rgba(0,0,0,0.04)", border: "none", width: 30, height: 30, borderRadius: 10, fontSize: 14, cursor: "pointer", color: T.text.tertiary }}>✕</button></div>
+        <div style={{ textAlign: "center", marginBottom: 24 }}><div style={{ width: 60, height: 60, borderRadius: "50%", margin: "0 auto 12px", background: `linear-gradient(135deg,${T.coral.soft},${T.purple.soft})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>👤</div><div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500 }}>Demo User</div><div style={{ fontSize: 12, color: T.text.quaternary, marginTop: 3 }}>demo@begin.app</div></div>
+        <div style={{ background: T.coral.airy, borderRadius: 16, padding: 14, marginBottom: 14, border: `1px solid ${T.coral.soft}25` }}><div style={{ fontSize: 11, fontWeight: 700, color: T.coral.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>☯️ BaZi</div><div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>Day Master: Bing Fire · Born: 1995-06-15</div></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>{[["📝",count,"Entries"],["🔥","15","Streak"],["🎯","82%","Match"]].map(([ic,v,l])=>(<div key={l} style={{ background: "rgba(255,255,255,0.45)", borderRadius: 14, padding: "12px 6px", textAlign: "center", border: "1px solid rgba(255,255,255,0.5)" }}><div style={{ fontSize: 17, marginBottom: 2 }}>{ic}</div><div style={{ fontWeight: 700, fontSize: 16, fontFamily: "'Fraunces',serif" }}>{v}</div><div style={{ fontSize: 10, color: T.text.quaternary }}>{l}</div></div>))}</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════
+function App() {
+  const [tab, setTab] = useState("fortune");
+  const [selectedCat, setSelectedCat] = useState("overall");
+  const [revealed, setRevealed] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askQuestion, setAskQuestion] = useState(null);
+  const [celestialOpen, setCelestialOpen] = useState(false);
+  const [diaryChatOpen, setDiaryChatOpen] = useState(false);
+  const [diaryDetail, setDiaryDetail] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [diaries, setDiaries] = useState(initialDiaries);
+
+  // 🔧 优化 3: 滚动时背景跟随主题色变化
+  const [activeCat, setActiveCat] = useState("overall");
+  
+  useEffect(() => {
+    if (!revealed || tab !== "fortune") return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            const catKey = entry.target.id.replace("card-", "");
+            setActiveCat(catKey);
+          }
+        });
+      },
+      { threshold: [0.5], rootMargin: "-20% 0px -20% 0px" }
+    );
+
+    categories.forEach(c => {
+      const el = document.getElementById(`card-${c.key}`);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [revealed, tab]);
+
+  const selTheme = categories.find(c => c.key === activeCat)?.theme || T.coral;
+  // Diary 页面使用紫色主题光球
+  const orbTheme = tab === "diary" ? T.purple : selTheme;
+  const questions = suggestedQuestions[selectedCat] || suggestedQuestions.overall;
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const candyGlassBtn = (accent, active = false) => ({
+    padding: "12px 22px",
+    borderRadius: 16,
+    cursor: "pointer",
+    border: `1px solid ${accent.soft}78`,
+    background: active
+      ? `linear-gradient(135deg, rgba(255,255,255,0.94), ${accent.airy})`
+      : "linear-gradient(135deg, rgba(255,255,255,0.90), rgba(255,255,255,0.76))",
+    color: accent.p,
+    fontSize: 14,
+    fontWeight: 700,
+    fontFamily: "inherit",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    boxShadow: active
+      ? `0 12px 28px ${accent.p}2E, inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 ${accent.soft}44`
+      : `0 8px 20px rgba(0,0,0,0.05), 0 0 0 1px ${accent.soft}24, inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(255,255,255,0.64)`,
+    transition: "all 0.35s cubic-bezier(0.2,0.8,0.2,1)",
+  });
+  const handleCandyGlassHover = (el, accent) => {
+    el.style.transform = "translateY(-1px) scale(1.01)";
+    el.style.background = `linear-gradient(135deg, rgba(255,255,255,0.94), ${accent.airy})`;
+    el.style.boxShadow = `0 14px 32px ${accent.p}34, inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 ${accent.soft}4A`;
+  };
+  const resetCandyGlass = (el, accent, active) => {
+    const base = candyGlassBtn(accent, active);
+    el.style.transform = "";
+    el.style.background = base.background;
+    el.style.boxShadow = base.boxShadow;
+  };
+
+  const handleBubbleClick = useCallback((q) => { setAskQuestion(q); setAskOpen(true); setCelestialOpen(false); }, []);
+  const handleCloseAsk = useCallback(() => { setAskOpen(false); setAskQuestion(null); }, []);
+  const saveDiary = (d) => setDiaries(prev => { const i = prev.findIndex(x=>x.id===d.id); if (i>=0) { const n=[...prev]; n[i]=d; return n; } return [d,...prev]; });
+
+  useEffect(() => { setAskOpen(false); setAskQuestion(null); }, [selectedCat]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: T.cream, fontFamily: "'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif", overflow: "hidden" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet" />
+
+      {/* 🔧 弥散光球 — 左上 + 右下 双区域分布 */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden", background: T.cream }}>
+        {/* ☀️ 左上主光球 — 大面积主色 */}
+        <div style={{
+          position: "absolute", width: 480, height: 480, borderRadius: "50%",
+          background: orbTheme.soft, opacity: 0.4, filter: "blur(100px)",
+          top: "-12%", left: "-8%",
+          animation: "orbDrift 28s ease-in-out infinite",
+          transition: "background 1.2s ease, opacity 1.2s ease",
+        }} />
+        {/* ☀️ 左上辅助光球 — 柔色补充 */}
+        <div style={{
+          position: "absolute", width: 340, height: 340, borderRadius: "50%",
+          background: orbTheme.airy, opacity: 0.55, filter: "blur(80px)",
+          top: "2%", left: "10%",
+          animation: "orbDrift 24s ease-in-out -4s infinite",
+          transition: "background 1.2s ease, opacity 1.2s ease",
+        }} />
+        {/* 🌙 右下主光球 — 大面积主色 */}
+        <div style={{
+          position: "absolute", width: 460, height: 460, borderRadius: "50%",
+          background: orbTheme.s, opacity: 0.5, filter: "blur(90px)",
+          bottom: "-10%", right: "-6%",
+          animation: "orbDrift 30s ease-in-out -10s infinite",
+          transition: "background 1.2s ease, opacity 1.2s ease",
+        }} />
+        {/* 🌙 右下辅助光球 — airy 大氛围 */}
+        <div style={{
+          position: "absolute", width: 380, height: 380, borderRadius: "50%",
+          background: orbTheme.airy, opacity: 0.65, filter: "blur(100px)",
+          bottom: "5%", right: "8%",
+          animation: "orbDrift 22s ease-in-out -7s infinite",
+          transition: "background 1.2s ease, opacity 1.2s ease",
+        }} />
+        {/* 🟣 Diary 专属紫色光圈 orb--purple */}
+        <div style={{
+          position: "absolute", width: 200, height: 200, borderRadius: "50%",
+          background: "rgba(143,107,247,0.18)",
+          filter: "blur(80px)",
+          bottom: "20%", right: "15%",
+          animation: "orbFloat 19s ease-in-out 3s infinite",
+          opacity: tab === "diary" ? 1 : 0,
+          transition: "opacity 1.2s ease",
+          pointerEvents: "none",
+        }} />
+        <style>{`
+          @keyframes orbDrift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(18px,-12px) scale(1.03)}66%{transform:translate(-12px,10px) scale(0.97)}}
+          @keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(10px,-14px) scale(1.04)}50%{transform:translate(-8px,12px) scale(0.96)}75%{transform:translate(14px,6px) scale(1.02)}}
+        `}</style>
+      </div>
+
+      <TopNav tab={tab} onTab={setTab} onProfile={() => setProfileOpen(true)} theme={selTheme} />
+
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", zIndex: 1 }}>
+
+        {tab === "fortune" && revealed && (
+          <CategorySidebar selected={selectedCat} onSelect={(key) => { setSelectedCat(key); document.getElementById(`card-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+        )}
+
+        <div style={{ flex: 1, overflow: "auto", minWidth: 0 }} id="fortune-scroll">
+          <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 36px 48px" }}>
+            <div style={{ marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div>
+                <div style={{ fontSize: 12.5, color: T.text.quaternary, fontWeight: 500, marginBottom: 4 }}>{today}</div>
+                <h1 style={{ fontFamily: "'Fraunces',serif", fontSize: 26, fontWeight: 500, margin: 0 }}>
+                  {tab === "fortune" ? "Good morning ☀️" : (
+                    <>
+                      The more you write,
+                      <br />
+                      the smarter your fortune gets
+                    </>
+                  )}
+                </h1>
+              </div>
+              {tab === "fortune" && revealed && (
+                <button
+                  onClick={() => { setCelestialOpen(!celestialOpen); if (askOpen) { setAskOpen(false); setAskQuestion(null); } }}
+                  style={candyGlassBtn(selTheme, celestialOpen)}
+                  onMouseEnter={e => handleCandyGlassHover(e.currentTarget, selTheme)}
+                  onMouseLeave={e => resetCandyGlass(e.currentTarget, selTheme, celestialOpen)}
+                >
+                  <span style={{ fontSize: 16, filter: `drop-shadow(0 2px 4px ${selTheme.p}30)` }}>✨</span> Today's Celestial
+                </button>
+              )}
+              {tab === "diary" && (
+                <button
+                  onClick={() => setDiaryChatOpen(true)}
+                  style={candyGlassBtn(orbTheme, diaryChatOpen)}
+                  onMouseEnter={e => handleCandyGlassHover(e.currentTarget, orbTheme)}
+                  onMouseLeave={e => resetCandyGlass(e.currentTarget, orbTheme, diaryChatOpen)}
+                >
+                  <span style={{ fontSize: 16, filter: `drop-shadow(0 2px 4px ${orbTheme.p}30)` }}>💬</span>
+                  <span>Chat to Journal</span>
+                </button>
+              )}
+            </div>
+
+            {tab === "fortune" && (
+              <>
+                {!revealed && <TarotDraw onDraw={() => setRevealed(true)} theme={selTheme} />}
+
+                {revealed && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    {categories.map(cat => {
+                      const fortune = mockFortunes[cat.key];
+                      return (
+                        <div key={cat.key} id={`card-${cat.key}`} style={{ scrollMarginTop: 20 }}>
+                          <FullFortuneCard cat={cat} fortune={fortune} theme={cat.theme} />
+                        </div>
+                      );
+                    })}
+
+                    <div style={{ textAlign: "center", padding: "4px 0 8px" }}>
+                      <span style={{ fontSize: 12, color: T.text.quaternary }}>✍️ The more you write, the smarter your fortune gets</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {tab === "diary" && (
+              <>
+                <div style={{ margin: "10px 0 24px" }}>
+                  <div style={{ height: 1, borderRadius: 1, background: "linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,0.14) 18%, rgba(0,0,0,0.14) 82%, rgba(0,0,0,0))" }} />
+                </div>
+                <DiaryView diaries={diaries} onSelect={d => setDiaryDetail(d)} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {tab === "fortune" && revealed && (
+          <>
+            {!askOpen && !celestialOpen && (
+              <BreathBlobs questions={questions} theme={selTheme} onBubbleClick={handleBubbleClick} />
+            )}
+
+            <div style={{
+              width: askOpen ? 420 : 0, opacity: askOpen ? 1 : 0,
+              overflow: "hidden", flexShrink: 0,
+              transition: "all 0.5s cubic-bezier(0.2,0.8,0.2,1)",
+              background: askOpen ? `linear-gradient(180deg,${selTheme.airy}AA,rgba(253,251,248,0.9))` : "transparent",
+              display: "flex", flexDirection: "column",
+            }}>
+              {askOpen && <QuickAskPanel category={selectedCat} theme={selTheme} initialQuestion={askQuestion} onClose={handleCloseAsk} />}
+            </div>
+
+            <div style={{
+              width: celestialOpen ? 400 : 0, opacity: celestialOpen ? 1 : 0,
+              overflow: "hidden", flexShrink: 0,
+              transition: "all 0.5s cubic-bezier(0.2,0.8,0.2,1)",
+              borderLeft: celestialOpen ? "1px solid rgba(0,0,0,0.04)" : "none",
+              background: celestialOpen ? `linear-gradient(180deg, ${selTheme.airy}AA, rgba(253,251,248,0.92))` : "transparent",
+              display: "flex", flexDirection: "column",
+            }}>
+              {celestialOpen && <CelestialPanel onClose={() => setCelestialOpen(false)} theme={selTheme} />}
+            </div>
+          </>
+        )}
+
+        {tab === "diary" && (
+          <div style={{
+            width: diaryChatOpen ? 420 : 0, opacity: diaryChatOpen ? 1 : 0,
+            overflow: "hidden", flexShrink: 0,
+            transition: "all 0.5s cubic-bezier(0.2,0.8,0.2,1)",
+            borderLeft: diaryChatOpen ? "1px solid rgba(0,0,0,0.04)" : "none",
+            background: diaryChatOpen ? `linear-gradient(180deg, ${orbTheme.airy}AA, rgba(253,251,248,0.9))` : "transparent",
+            display: "flex", flexDirection: "column",
+          }}>
+            {diaryChatOpen && (
+              <DiaryChatPanel
+                onClose={() => setDiaryChatOpen(false)}
+                onSave={(d) => { setDiaries(prev => [d, ...prev]); }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {diaryDetail && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.12)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={e=>{if(e.target===e.currentTarget) setDiaryDetail(null);}}>
+          <div style={{ ...glassCard({ borderRadius: 28, maxWidth: 500, width: "100%", maxHeight: "85vh", overflow: "auto", padding: 32 }), background: "rgba(255,255,255,0.88)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, alignItems: "center" }}>
+              <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, margin: 0 }}>{diaryDetail.title}</h2>
+              <button onClick={() => setDiaryDetail(null)} style={{ background: "rgba(0,0,0,0.04)", border: "none", width: 32, height: 32, borderRadius: 10, fontSize: 15, cursor: "pointer", color: T.text.tertiary, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: 28 }}>{["","😢","😔","😐","🙂","😊"][diaryDetail.mood]}</span>
+              <span style={{ fontSize: 13, color: T.text.quaternary }}>{diaryDetail.date}</span>
+            </div>
+            <p style={{ fontSize: 14.5, lineHeight: 1.8, color: T.text.secondary, margin: "0 0 16px" }}>{diaryDetail.content}</p>
+            {diaryDetail.aiReply && (
+              <div style={{ background: T.blue.airy, borderRadius: 16, padding: 16, borderLeft: `3px solid ${T.blue.p}` }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.blue.p, marginBottom: 6 }}>🤖 AI Insight</div>
+                <p style={{ fontSize: 13.5, lineHeight: 1.7, color: T.text.secondary, margin: 0 }}>{diaryDetail.aiReply}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {profileOpen && <ProfileModal onClose={()=>setProfileOpen(false)} count={diaries.length} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
