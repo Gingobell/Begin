@@ -318,9 +318,9 @@ function TarotDraw({ onDraw, theme }) {
 function TopNav({ tab, onTab, onProfile, theme }) {
   return (
     <div style={{ height: 56, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", background: "rgba(253,251,248,0.75)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderBottom: "1px solid rgba(0,0,0,0.025)", zIndex: 40, position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 11, background: `linear-gradient(135deg,${T.coral.s},${T.coral.p})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "'Fraunces',serif", boxShadow: `0 3px 12px ${T.coral.p}20` }}>B</div>
-        <span style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500, color: T.text.primary }}>Begin</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <img src="/logo.png" alt="Begin" style={{ width: 38, height: 38, borderRadius: 12, objectFit: "cover" }} />
+        <span style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, color: T.text.primary }}>Begin</span>
       </div>
       <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.03)", borderRadius: 14, padding: 3 }}>
         {[{key:"fortune",label:"Fortune",icon:"✨"},{key:"diary",label:"Diary",icon:"📝"}].map(t => {

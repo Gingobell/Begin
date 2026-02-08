@@ -27,9 +27,9 @@ function TopNav({ tab, onTab, onProfile, theme }: {
       WebkitBackdropFilter: "blur(24px)", borderBottom: "1px solid rgba(0,0,0,0.025)",
       zIndex: 40, position: "relative",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <img src="/logo.png" alt="Begin" style={{ width: 34, height: 34, borderRadius: 11 }} />
-        <span style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500, color: T.text.primary }}>Begin</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <img src="/logo.png" alt="Begin" style={{ width: 38, height: 38, borderRadius: 12 }} />
+        <span style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, color: T.text.primary }}>Begin</span>
       </div>
       <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.03)", borderRadius: 14, padding: 3 }}>
         {([{ key: "fortune" as Tab, label: "Fortune", icon: "✨" }, { key: "diary" as Tab, label: "Diary", icon: "📝" }]).map(t => {
@@ -310,7 +310,7 @@ function AppShell() {
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.cream }}>
-        <img src="/logo.png" alt="Begin" style={{ width: 34, height: 34, borderRadius: 11 }} />
+        <img src="/logo.png" alt="Begin" style={{ width: 42, height: 42, borderRadius: 14 }} />
       </div>
     );
   }
