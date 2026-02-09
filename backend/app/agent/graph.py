@@ -11,14 +11,25 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from typing import Literal
+
 from langchain_core.tools import tool
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.prebuilt import create_react_agent
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent, ToolNode
 from psycopg_pool import AsyncConnectionPool
 
-from app.config import SUPABASE_DB_URI, GOOGLE_API_KEY, DEFAULT_CHAT_MODEL
+from copilotkit import CopilotKitState
+from copilotkit.langgraph import copilotkit_emit_state
+
+from app.config import (
+    SUPABASE_DB_URI, GOOGLE_API_KEY, DEFAULT_CHAT_MODEL,
+    THINKING_ENABLED, THINKING_LEVEL,
+)
 from app.agent.prompts import build_system_prompt
 from app.services.vector_service import vector_service
 from app.services.bazi_service import bazi_service
@@ -38,6 +49,8 @@ async def search_diaries(query: str, config: RunnableConfig, max_results: int = 
     user_id = config.get("configurable", {}).get("user_id", "")
     if not user_id:
         return "无法搜索日记：缺少用户信息。"
+    if not query or not query.strip():
+        return "请提供搜索关键词。"
 
     try:
         results = await vector_service.search_similar_diaries(
@@ -315,3 +328,117 @@ class ChatAgentService:
 # ── Singleton ───────────────────────────────────────────────────────
 
 chat_agent = ChatAgentService()
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AG-UI / CopilotKit graph (with thinking_buffer for frontend)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BACKEND_TOOLS = [search_diaries, query_bazi_info, query_tarot_info]
+
+
+class AgentState(CopilotKitState):
+    """CopilotKitState + thinking buffer for frontend display."""
+    thinking_buffer: str
+
+
+def _extract_thinking(content) -> str:
+    """Extract thinking blocks from AIMessage.content (list format when include_thoughts=True)."""
+    if not isinstance(content, list):
+        return ""
+    return "\n\n".join(
+        block.get("thinking", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "thinking" and block.get("thinking")
+    )
+
+
+def _build_llm() -> ChatGoogleGenerativeAI:
+    kwargs = dict(
+        model=DEFAULT_CHAT_MODEL,
+        google_api_key=GOOGLE_API_KEY,
+        temperature=1.0,
+    )
+    if THINKING_ENABLED:
+        kwargs["thinking_level"] = THINKING_LEVEL.lower()
+        kwargs["include_thoughts"] = True
+    return ChatGoogleGenerativeAI(**kwargs)
+
+
+async def _agent_node(state: AgentState, config: RunnableConfig):
+    from app.services.letta_service import letta_service
+
+    user_id: str = config.get("configurable", {}).get("user_id", "")
+    user_profile = ""
+    if user_id:
+        try:
+            user_profile = await letta_service.get_user_profile(user_id)
+        except Exception as exc:
+            logger.warning("Profile fetch failed for %s: %s", user_id, exc)
+
+    system_prompt = build_system_prompt(user_profile=user_profile, today_fortune=None)
+
+    llm = _build_llm().bind_tools(BACKEND_TOOLS)
+    messages = [SystemMessage(content=system_prompt), *state["messages"]]
+
+    # Stream to capture thinking chunks in real-time
+    prev = state.get("thinking_buffer", "") or ""
+    thinking_buffer = prev
+    full_message = None
+
+    async for chunk in llm.astream(messages, config=config):
+        if full_message is None:
+            full_message = chunk
+        else:
+            full_message = full_message + chunk
+
+        # Extract thinking from this chunk and emit immediately
+        new_thinking = _extract_thinking(chunk.content)
+        if new_thinking:
+            separator = "\n\n---\n\n" if thinking_buffer else ""
+            thinking_buffer = thinking_buffer + separator + new_thinking
+            await copilotkit_emit_state(config, {"thinking_buffer": thinking_buffer})
+            logger.info("🧠 thinking streamed: +%d chars (total %d)", len(new_thinking), len(thinking_buffer))
+
+    ai_message = AIMessage(
+        content=full_message.content,
+        tool_calls=full_message.tool_calls,
+        additional_kwargs=full_message.additional_kwargs,
+    )
+
+    logger.info("🧠 thinking final: %d chars, blocks: %s",
+                len(thinking_buffer),
+                [b.get("type") for b in ai_message.content if isinstance(b, dict)] if isinstance(ai_message.content, list) else "str")
+
+    return {"messages": [ai_message], "thinking_buffer": thinking_buffer}
+
+
+def _should_continue(state: AgentState) -> Literal["tools", "__end__"]:
+    last = state["messages"][-1]
+    if isinstance(last, AIMessage) and last.tool_calls:
+        return "tools"
+    return END
+
+
+_agui_compiled = None
+
+
+def build_agui_graph():
+    global _agui_compiled
+    if _agui_compiled is not None:
+        return _agui_compiled
+
+    if not GOOGLE_API_KEY:
+        raise RuntimeError("GOOGLE_API_KEY not set")
+
+    wf = StateGraph(AgentState)
+    wf.add_node("agent", _agent_node)
+    wf.add_node("tools", ToolNode(BACKEND_TOOLS))
+    wf.set_entry_point("agent")
+    wf.add_conditional_edges("agent", _should_continue, {"tools": "tools", END: END})
+    wf.add_edge("tools", "agent")
+
+    _agui_compiled = wf.compile(checkpointer=InMemorySaver())
+    logger.info("AG-UI graph compiled (model=%s, tools=%s, thinking=%s)",
+                DEFAULT_CHAT_MODEL, [t.name for t in BACKEND_TOOLS], THINKING_ENABLED)
+    return _agui_compiled

@@ -13,7 +13,7 @@ import logging
 from copilotkit import CopilotKitRemoteEndpoint, LangGraphAgent
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
 
-from app.agent.agui_graph import build_agui_graph
+from app.agent.graph import build_agui_graph
 
 logger = logging.getLogger(__name__)
 

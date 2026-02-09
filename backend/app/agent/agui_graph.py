@@ -6,6 +6,7 @@ Gemini's thinking process and expose it via state snapshots.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import uuid
 from typing import Annotated, Literal
@@ -138,6 +139,13 @@ def _langchain_to_gemini_contents(
     system_instruction = None
     contents: list[genai_types.Content] = []
 
+    # Pre-build call_id → thought_signature map from all AIMessages
+    sig_map: dict[str, str] = {}
+    for msg in messages:
+        if isinstance(msg, AIMessage):
+            sigs = msg.additional_kwargs.get("thought_signatures", {})
+            sig_map.update(sigs)
+
     for msg in messages:
         if isinstance(msg, SystemMessage):
             system_instruction = msg.content
@@ -148,23 +156,32 @@ def _langchain_to_gemini_contents(
             ))
         elif isinstance(msg, AIMessage):
             parts = []
+            # Retrieve thought_signatures map if present
+            sigs = msg.additional_kwargs.get("thought_signatures", {})
             # Text content
             if msg.content:
                 text = msg.content if isinstance(msg.content, str) else str(msg.content)
                 if text:
                     parts.append(genai_types.Part(text=text))
-            # Tool calls
+            # Tool calls — attach thought_signature per call
             for tc in (msg.tool_calls or []):
-                parts.append(genai_types.Part(
+                call_id = tc.get("id")
+                sig_b64 = sigs.get(call_id)
+                sig = base64.b64decode(sig_b64) if sig_b64 else None
+                part = genai_types.Part(
                     function_call=genai_types.FunctionCall(
                         name=tc["name"],
                         args=tc.get("args", {}),
-                        id=tc.get("id"),
-                    )
-                ))
+                        id=call_id,
+                    ),
+                    thought_signature=sig,
+                )
+                parts.append(part)
             if parts:
                 contents.append(genai_types.Content(role="model", parts=parts))
         elif isinstance(msg, ToolMessage):
+            sig_b64 = sig_map.get(msg.tool_call_id)
+            sig = base64.b64decode(sig_b64) if sig_b64 else None
             contents.append(genai_types.Content(
                 role="user",
                 parts=[genai_types.Part(
@@ -172,7 +189,8 @@ def _langchain_to_gemini_contents(
                         name=msg.name or msg.tool_call_id,
                         response={"result": msg.content},
                         id=msg.tool_call_id,
-                    )
+                    ),
+                    thought_signature=sig,
                 )],
             ))
 
@@ -190,21 +208,25 @@ def _gemini_response_to_ai_message(
     text_parts: list[str] = []
     thinking_parts: list[str] = []
     tool_calls: list[dict] = []
+    thought_sigs: dict[str, str] = {}  # call_id → thought_signature
 
     for candidate in response.candidates or []:
         for part in candidate.content.parts or []:
             # Thinking part
             if part.thought and part.text:
                 thinking_parts.append(part.text)
-            # Function call
+            # Function call — preserve thought_signature for Gemini 3
             elif part.function_call:
                 fc = part.function_call
+                call_id = fc.id or f"call_{uuid.uuid4().hex[:8]}"
                 tool_calls.append({
                     "name": fc.name,
                     "args": dict(fc.args) if fc.args else {},
-                    "id": fc.id or f"call_{uuid.uuid4().hex[:8]}",
+                    "id": call_id,
                     "type": "tool_call",
                 })
+                if getattr(part, "thought_signature", None):
+                    thought_sigs[call_id] = base64.b64encode(part.thought_signature).decode("ascii")
             # Regular text
             elif part.text:
                 text_parts.append(part.text)
@@ -212,9 +234,14 @@ def _gemini_response_to_ai_message(
     content = "".join(text_parts)
     thinking = "\n\n".join(thinking_parts)
 
+    additional_kwargs = {}
+    if thought_sigs:
+        additional_kwargs["thought_signatures"] = thought_sigs
+
     ai_msg = AIMessage(
         content=content,
         tool_calls=tool_calls if tool_calls else [],
+        additional_kwargs=additional_kwargs,
     )
 
     return ai_msg, thinking

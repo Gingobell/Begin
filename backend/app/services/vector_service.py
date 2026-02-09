@@ -34,6 +34,8 @@ class VectorService:
         max_results: int = 5,
     ) -> List[Dict[str, Any]]:
         """搜索相似的日记内容"""
+        if not query or not query.strip():
+            return []
         try:
             query_embedding = await genai_service.generate_embedding(query)
             response = self.supabase.rpc(

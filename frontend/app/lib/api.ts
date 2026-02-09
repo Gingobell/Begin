@@ -152,3 +152,11 @@ export async function searchDiaries(keyword: string, limit = 20) {
   if (!res.ok) throw new Error("Failed to search diaries");
   return res.json();
 }
+
+// ── User ──────────────────────────────────────────────────────────
+
+export async function getUserProfile() {
+  const res = await apiFetch(`/api/v1/user/profile`);
+  if (!res.ok) throw new Error("Failed to get user profile");
+  return res.json();
+}

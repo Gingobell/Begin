@@ -24,6 +24,7 @@ DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001"
 DEFAULT_CHAT_MODEL = "gemini-3-flash-preview"
 THINKING_ENABLED = os.environ.get("THINKING_ENABLED", "true").lower() == "true"
 THINKING_LEVEL = os.environ.get("THINKING_LEVEL", "HIGH")  # LOW | MEDIUM | HIGH
+THINKING_BUDGET = {"LOW": 1024, "MEDIUM": 4096, "HIGH": 8192}.get(THINKING_LEVEL, 8192)
 
 # Letta配置
 LETTA_BASE_URL = os.environ.get("LETTA_BASE_URL", "http://localhost:8283")

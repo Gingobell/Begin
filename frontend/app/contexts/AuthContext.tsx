@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   login as apiLogin,
   register as apiRegister,
+  getUserProfile,
   setTokens,
   loadTokens,
   clearTokens,
@@ -15,6 +16,20 @@ interface UserInfo {
   id: string;
   email: string;
   full_name?: string;
+  avatar_url?: string;
+  birth_datetime?: string;
+  gender?: string;
+  fortune_categories?: string[];
+  usageStats?: {
+    registrationDate?: string;
+    totalDays?: number;
+    consecutiveCheckins?: number;
+    totalDiaries?: number;
+    monthlyDiaries?: number;
+    totalConversations?: number;
+    totalWords?: number;
+    lastActiveDate?: string;
+  };
 }
 
 interface AuthContextType {
@@ -31,32 +46,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchAndSetProfile = useCallback(async (base: UserInfo) => {
+    try {
+      const profile = await getUserProfile();
+      const merged: UserInfo = { ...base, ...profile };
+      setUser(merged);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(merged));
+      }
+    } catch {
+      // API 失败时保留基础信息
+      setUser(base);
+    }
+  }, []);
+
   // Restore session on mount
   useEffect(() => {
     loadTokens();
     const saved = typeof window !== "undefined" ? localStorage.getItem("user") : null;
     if (saved && getAccessToken()) {
       try {
-        setUser(JSON.parse(saved));
+        const base = JSON.parse(saved) as UserInfo;
+        setUser(base);
+        fetchAndSetProfile(base);
       } catch {
         clearTokens();
       }
     }
     setLoading(false);
-  }, []);
+  }, [fetchAndSetProfile]);
 
   const handleAuth = useCallback((data: AuthResponse) => {
     setTokens(data.access_token, data.refresh_token);
-    const userInfo: UserInfo = {
+    const base: UserInfo = {
       id: data.user.id,
       email: data.user.email,
       full_name: data.user.full_name,
     };
-    setUser(userInfo);
+    setUser(base);
     if (typeof window !== "undefined") {
-      localStorage.setItem("user", JSON.stringify(userInfo));
+      localStorage.setItem("user", JSON.stringify(base));
     }
-  }, []);
+    fetchAndSetProfile(base);
+  }, [fetchAndSetProfile]);
 
   const loginFn = useCallback(
     async (email: string, password: string) => {

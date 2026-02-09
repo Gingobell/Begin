@@ -13,11 +13,12 @@ import { T, ThemeColor, suggestedQuestions } from "../lib/theme";
 type Tab = "fortune" | "diary";
 
 // ── TopNav ───────────────────────────────────────────────────────
-function TopNav({ tab, onTab, onProfile, theme }: {
+function TopNav({ tab, onTab, onProfile, theme, avatarUrl }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   onProfile: () => void;
   theme: ThemeColor;
+  avatarUrl?: string;
 }) {
   return (
     <div style={{
@@ -51,10 +52,10 @@ function TopNav({ tab, onTab, onProfile, theme }: {
       </div>
       <button onClick={onProfile} style={{
         width: 34, height: 34, borderRadius: 12, border: "none", cursor: "pointer",
-        background: `linear-gradient(135deg,${theme.airy},${theme.soft}50)`,
+        background: avatarUrl ? "transparent" : `linear-gradient(135deg,${theme.airy},${theme.soft}50)`,
         fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.03)",
-      }}>👤</button>
+        boxShadow: "0 1px 6px rgba(0,0,0,0.03)", padding: 0, overflow: "hidden",
+      }}>{avatarUrl ? <img src={avatarUrl} alt="" style={{ width: 34, height: 34, borderRadius: 12, objectFit: "cover" }} /> : "👤"}</button>
     </div>
   );
 }
@@ -62,15 +63,17 @@ function TopNav({ tab, onTab, onProfile, theme }: {
 // ── ProfileModal ─────────────────────────────────────────────────
 function ProfileModal({ onClose, user, onLogout, diaryCount }: {
   onClose: () => void;
-  user: { email: string; full_name?: string };
+  user: { email: string; full_name?: string; avatar_url?: string; birth_datetime?: string; gender?: string; usageStats?: { totalDiaries?: number; consecutiveCheckins?: number; totalWords?: number } };
   onLogout: () => void;
   diaryCount?: number;
 }) {
+  const s = user.usageStats;
   const stats: [string, string | number, string][] = [
-    ["📝", diaryCount ?? 0, "Entries"],
-    ["🔥", "15", "Streak"],
-    ["🎯", "82%", "Match"],
+    ["📝", s?.totalDiaries ?? diaryCount ?? 0, "Entries"],
+    ["🔥", s?.consecutiveCheckins ?? 0, "Streak"],
+    ["✍️", s?.totalWords ?? 0, "Words"],
   ];
+  const birthDate = user.birth_datetime ? user.birth_datetime.split("T")[0] : null;
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.12)",
@@ -90,28 +93,33 @@ function ProfileModal({ onClose, user, onLogout, diaryCount }: {
           }}>✕</button>
         </div>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{
-            width: 60, height: 60, borderRadius: "50%", margin: "0 auto 12px",
-            background: `linear-gradient(135deg,${T.coral.soft},${T.purple.soft})`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
-          }}>👤</div>
+          {user.avatar_url ? (
+            <img src={user.avatar_url} alt="" style={{ width: 60, height: 60, borderRadius: "50%", margin: "0 auto 12px", objectFit: "cover" }} />
+          ) : (
+            <div style={{
+              width: 60, height: 60, borderRadius: "50%", margin: "0 auto 12px",
+              background: `linear-gradient(135deg,${T.coral.soft},${T.purple.soft})`,
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+            }}>👤</div>
+          )}
           <div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500 }}>
             {user.full_name || "User"}
           </div>
           <div style={{ fontSize: 12, color: T.text.quaternary, marginTop: 3 }}>{user.email}</div>
         </div>
-        {/* BaZi card */}
-        <div style={{
-          background: T.coral.airy, borderRadius: 16, padding: 14, marginBottom: 14,
-          border: `1px solid ${T.coral.soft}25`,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.coral.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            ☯️ BaZi
+        {birthDate && (
+          <div style={{
+            background: T.coral.airy, borderRadius: 16, padding: 14, marginBottom: 14,
+            border: `1px solid ${T.coral.soft}25`,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.coral.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Born
+            </div>
+            <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>
+              {birthDate}{user.gender ? ` · ${user.gender}` : ""}
+            </div>
           </div>
-          <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>
-            Day Master: 丙 Fire · Born: 1995-06-15
-          </div>
-        </div>
+        )}
         {/* Stats grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {stats.map(([ic, v, l]) => (
@@ -310,7 +318,7 @@ function AppShell() {
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.cream }}>
-        <img src="/logo.png" alt="Begin" style={{ width: 34, height: 34, borderRadius: 11 }} />
+        <img src="/logo.png" alt="Begin" style={{ width: 65, height: 65, borderRadius: 11 }} />
       </div>
     );
   }
@@ -336,7 +344,7 @@ function AppShell() {
     <CopilotKit runtimeUrl="/api/copilotkit" agent="fortune_diary" properties={{ user_id: user.id }}>
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
         <OrbBackground theme={activeCatTheme} tab={tab} />
-        <TopNav tab={tab} onTab={setTab} onProfile={() => setProfileOpen(true)} theme={activeCatTheme} />
+        <TopNav tab={tab} onTab={setTab} onProfile={() => setProfileOpen(true)} theme={activeCatTheme} avatarUrl={user.avatar_url} />
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", zIndex: 1 }}>
           {tab === "fortune" && (

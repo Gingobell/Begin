@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 FortuneDiary backend starting...")
 
     # 1. Compile the shared graph (used by both endpoints)
-    from app.agent.agui_graph import build_agui_graph
+    from app.agent.graph import build_agui_graph
     build_agui_graph()
     logger.info("✅ LangGraph graph ready")
 
@@ -74,6 +74,7 @@ for module_path, prefix, tag in [
     ("app.api.auth", "/api/v1/auth", "auth"),
     ("app.api.fortune", "/api/v1/fortune", "fortune"),
     ("app.api.diary", "/api/v1/diaries", "diaries"),
+    ("app.api.user", "/api/v1/user", "user"),
 ]:
     try:
         import importlib

@@ -4,7 +4,7 @@ from typing import List
 import asyncio
 import logging
 
-from app.config import DEFAULT_CHAT_MODEL
+from app.config import DEFAULT_CHAT_MODEL, DEFAULT_EMBEDDING_MODEL
 
 
 class GenAIService:
@@ -19,7 +19,7 @@ class GenAIService:
         except Exception as e:
             logging.error(f"❌ 初始化模型 {DEFAULT_CHAT_MODEL} 失败: {e}")
             raise ValueError(f"无法初始化 Gemini 模型: {DEFAULT_CHAT_MODEL}")
-        self.embedding_model = "models/embedding-001"
+        self.embedding_model = f"models/{DEFAULT_EMBEDDING_MODEL}"
 
     async def generate_embedding(self, text: str, output_dimensionality: int = 768) -> List[float]:
         """为输入文本生成向量表示"""
