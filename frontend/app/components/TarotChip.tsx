@@ -1,6 +1,7 @@
 "use client";
 
 import { BaseChip } from "./BaseChip";
+import { useTranslation } from "../i18n";
 
 interface TarotChipProps {
   status: string;
@@ -21,15 +22,16 @@ const colorScheme = {
 };
 
 export function TarotChip({ status }: TarotChipProps) {
+  const { t } = useTranslation();
   const isActive = status !== "complete";
 
   return (
     <BaseChip
       isActive={isActive}
-      activeLabel="正在翻阅塔罗牌"
-      completeLabel="塔罗查询完成"
+      activeLabel={t("chips.tarot.active")}
+      completeLabel={t("chips.tarot.complete")}
       colorScheme={colorScheme}
-      subtitle={isActive ? "今日塔罗 / 牌义解读" : "已获取今日塔罗牌信息"}
+      subtitle={isActive ? t("chips.tarot.subtitleActive") : t("chips.tarot.subtitleComplete")}
       activeIcon={
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="animate-spin" style={{ animationDuration: "2s" }}>
           <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="28" strokeDashoffset="8" />

@@ -179,6 +179,7 @@ async def get_daily_fortune(
     local_date: Optional[str] = Query(None, description="前端本地日期（格式：YYYY-MM-DD）"),
     tarot_card_id: Optional[int] = Query(None, description="前端抽取的塔罗牌ID"),
     orientation: Optional[str] = Query(None, description="塔罗牌朝向：upright/reversed"),
+    force_regenerate: bool = Query(False, description="强制重新生成（语言切换时使用）"),
     accept_language: Optional[str] = Header(None, alias="Accept-Language"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ):
@@ -224,11 +225,11 @@ async def get_daily_fortune(
 
         try:
             # 尝试从 daily_fortune_details 表获取 mock 用户的今日运势（包含语言过滤）
-            details_response = supabase.table("daily_fortune_details").select("*").eq("user_id", mock_user_id).eq("fortune_date", today.isoformat()).eq("language", user_language).single().execute()
+            details_response = supabase.table("daily_fortune_details").select("*").eq("user_id", mock_user_id).eq("fortune_date", today.isoformat()).eq("language", user_language).limit(1).execute()
             if details_response.data:
                 print(f"\n{'='*80}")
                 print(f"✅ 找到 mock 用户的预备运势: {today} (语言: {user_language})")
-                data = details_response.data
+                data = details_response.data[0]
                 
                 # 输出数据库返回的原始数据
                 print(f"📦 数据库返回的 battery_fortune 字段:")
@@ -361,7 +362,7 @@ async def get_daily_fortune(
 
     # 检查内存缓存（包含语言）
     cache_key = f"{user_id}:{today.isoformat()}:{user_language}"
-    if cache_key in _fortune_cache:
+    if not force_regenerate and cache_key in _fortune_cache:
         cache_entry = _fortune_cache[cache_key]
         cache_age = (datetime.now() - cache_entry['timestamp']).total_seconds()
         if cache_age < _fortune_cache_ttl:
@@ -369,52 +370,53 @@ async def get_daily_fortune(
             return cache_entry['data']
 
     # 1. 从 daily_fortune_details 表获取今日运势（包含语言过滤）
-    try:
-        details_response = supabase.table("daily_fortune_details").select("*").eq("user_id", user_id).eq("fortune_date", today.isoformat()).eq("language", user_language).single().execute()
-        if details_response.data:
-            print(f"\n{'='*80}")
-            print(f"✅ 找到预备运势 for user {user_id} on {today} (语言: {user_language})")
-            data = details_response.data
-            
-            # 输出数据库返回的原始数据
-            print(f"📦 数据库返回的 battery_fortune 字段:")
-            print(f"   {data.get('battery_fortune')}")
-            print(f"📦 数据库返回的 daily_bazi 字段:")
-            print(f"   {data.get('daily_bazi')}")
-            print(f"📦 数据库返回的 daily_tarot 字段:")
-            print(f"   {data.get('daily_tarot')}")
-            
-            # 补充 image_key 到缓存的 tarot 数据
-            tarot_data = data.get("daily_tarot")
-            if tarot_data and "image_key" not in tarot_data:
-                card_name = tarot_data.get("card", {}).get("card_name")
-                orientation = tarot_data.get("orientation", "upright")
-                if card_name:
-                    tarot_data["image_key"] = tarot_service._generate_image_key(card_name, orientation)
+    if not force_regenerate:
+        try:
+            details_response = supabase.table("daily_fortune_details").select("*").eq("user_id", user_id).eq("fortune_date", today.isoformat()).eq("language", user_language).limit(1).execute()
+            if details_response.data:
+                data = details_response.data[0]
+                print(f"\n{'='*80}")
+                print(f"✅ 找到预备运势 for user {user_id} on {today} (语言: {user_language})")
 
-            result = {
-                "bazi_analysis": data.get("daily_bazi"),
-                "tarot_reading": tarot_data,
-                "battery_fortune": data.get("battery_fortune"),
-                "from_cache": True
-            }
-            
-            # 输出最终返回的数据结构
-            print(f"📤 返回给前端的数据结构:")
-            print(f"   bazi_analysis存在: {result.get('bazi_analysis') is not None}")
-            print(f"   tarot_reading存在: {result.get('tarot_reading') is not None}")
-            print(f"   battery_fortune键: {list(result.get('battery_fortune', {}).keys()) if result.get('battery_fortune') else 'None'}")
-            print(f"{'='*80}\n")
-            
-            # 保存到内存缓存
-            _fortune_cache[cache_key] = {
-                'data': result,
-                'timestamp': datetime.now()
-            }
-            
-            return result
-    except Exception as e:
-        logging.info(f"未找到预备运势，开始生成新运势...")
+                # 输出数据库返回的原始数据
+                print(f"📦 数据库返回的 battery_fortune 字段:")
+                print(f"   {data.get('battery_fortune')}")
+                print(f"📦 数据库返回的 daily_bazi 字段:")
+                print(f"   {data.get('daily_bazi')}")
+                print(f"📦 数据库返回的 daily_tarot 字段:")
+                print(f"   {data.get('daily_tarot')}")
+
+                # 补充 image_key 到缓存的 tarot 数据
+                tarot_data = data.get("daily_tarot")
+                if tarot_data and "image_key" not in tarot_data:
+                    card_name = tarot_data.get("card", {}).get("card_name")
+                    orientation = tarot_data.get("orientation", "upright")
+                    if card_name:
+                        tarot_data["image_key"] = tarot_service._generate_image_key(card_name, orientation)
+
+                result = {
+                    "bazi_analysis": data.get("daily_bazi"),
+                    "tarot_reading": tarot_data,
+                    "battery_fortune": data.get("battery_fortune"),
+                    "from_cache": True
+                }
+
+                # 输出最终返回的数据结构
+                print(f"📤 返回给前端的数据结构:")
+                print(f"   bazi_analysis存在: {result.get('bazi_analysis') is not None}")
+                print(f"   tarot_reading存在: {result.get('tarot_reading') is not None}")
+                print(f"   battery_fortune键: {list(result.get('battery_fortune', {}).keys()) if result.get('battery_fortune') else 'None'}")
+                print(f"{'='*80}\n")
+
+                # 保存到内存缓存
+                _fortune_cache[cache_key] = {
+                    'data': result,
+                    'timestamp': datetime.now()
+                }
+
+                return result
+        except Exception as e:
+            logging.info(f"未找到预备运势，开始生成新运势...")
 
     # 2. 如果数据库没有记录，则生成新运势
     logging.info(f"Generating new fortune for user {user_id} on {today}.")
@@ -519,7 +521,7 @@ async def get_daily_fortune(
         }
 
         logging.info(f"📝 准备保存到数据库，记录字段: {list(fortune_details_record.keys())}, 语言: {user_language}")
-        insert_response = supabase.table("daily_fortune_details").upsert(fortune_details_record).execute()
+        insert_response = supabase.table("daily_fortune_details").upsert(fortune_details_record, on_conflict="user_id,fortune_date,language").execute()
         logging.info(f"✅ 数据库保存成功: {insert_response.data}")
     except Exception as e:
         logging.error(f"❌ Failed to save fortune details: {e}", exc_info=True)

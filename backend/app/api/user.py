@@ -40,8 +40,8 @@ async def get_user_profile(current_user: User = Depends(get_current_user)):
         reminder_settings = {}
         privacy_settings = {}
         try:
-            preferences_response = supabase.table("user_preferences").select("*").eq("user_id", user_id).single().execute()
-            if preferences_response.data:
+            preferences_response = supabase.table("user_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
+            if preferences_response and preferences_response.data:
                 logging.info(f"[GET_PROFILE] ⚙️ 偏好设置数据: {preferences_response.data}")
 
                 # 注意：不再使用 user_preferences.focus_areas 字段（已废弃）

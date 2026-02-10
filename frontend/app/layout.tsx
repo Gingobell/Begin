@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@copilotkit/react-ui/styles.css";
 import "./globals.css";
+import { LanguageProvider } from "./i18n";
 
 export const metadata: Metadata = {
   title: "Begin — Fortune & Diary",
@@ -13,8 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN">
-      <body>{children}</body>
+    <html lang="en-US" suppressHydrationWarning>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

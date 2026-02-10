@@ -33,7 +33,9 @@ def mount_agui_endpoint(app) -> None:
     async def agent_endpoint(input_data: RunAgentInput, request: Request):
         props = input_data.forwarded_props or {}
         user_id = props.get("user_id", "")
-        agent.config = {"configurable": {"user_id": user_id}}
+        chat_type = props.get("chat_type", "fortune")
+        language = props.get("language", "zh-CN")
+        agent.config = {"configurable": {"user_id": user_id, "chat_type": chat_type, "language": language}}
 
         encoder = EventEncoder(accept=request.headers.get("accept"))
 

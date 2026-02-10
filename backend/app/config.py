@@ -8,6 +8,14 @@ MOCK_USER_EMAIL = "mock@fortunediary.com"
 MOCK_USER_PASSWORD = "mockpassword123"
 MOCK_USER_NAME = "Mock测试用户"
 
+# Demo用户配置
+DEMO_USER_EMAIL = "sarah.chen@demo.fortunediary.com"
+DEMO_USER_PASSWORD = "demo_sarah_2025"
+DEMO_USER_NAME = "Sarah Chen"
+DEMO_USER_BIRTH = "1997-08-15T14:30:00"
+DEMO_USER_GENDER = "female"
+DEMO_USER_TIMEZONE = "America/Los_Angeles"
+
 # Supabase配置
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
@@ -49,6 +57,10 @@ RAG_MAX_CONTEXT_LENGTH = 4000
 # 运势配置
 FORTUNE_FOCUS_AREAS = ["career", "love", "wealth", "study"]
 FORTUNE_STYLES = ["balanced", "optimistic", "realistic"]
+
+# 语言配置
+SUPPORTED_LANGUAGES = ["zh-CN", "en-US"]
+DEFAULT_LANGUAGE = "en-US"
 
 # 功能开关
 ENABLE_MOCK_MODE = os.environ.get("ENABLE_MOCK_MODE", "false").lower() == "true"

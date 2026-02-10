@@ -1,6 +1,7 @@
 "use client";
 
 import { BaseChip } from "./BaseChip";
+import { useTranslation } from "../i18n";
 
 interface BaziChipProps {
   status: string;
@@ -21,15 +22,16 @@ const colorScheme = {
 };
 
 export function BaziChip({ status }: BaziChipProps) {
+  const { t } = useTranslation();
   const isActive = status !== "complete";
 
   return (
     <BaseChip
       isActive={isActive}
-      activeLabel="正在查阅命盘"
-      completeLabel="命盘查询完成"
+      activeLabel={t("chips.bazi.active")}
+      completeLabel={t("chips.bazi.complete")}
       colorScheme={colorScheme}
-      subtitle={isActive ? "八字 / 流日 / 体质分析" : "已获取八字与今日流日信息"}
+      subtitle={isActive ? t("chips.bazi.subtitleActive") : t("chips.bazi.subtitleComplete")}
       activeIcon={
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="animate-spin" style={{ animationDuration: "2s" }}>
           <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="28" strokeDashoffset="8" />

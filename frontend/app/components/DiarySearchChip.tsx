@@ -1,6 +1,7 @@
 "use client";
 
 import { BaseChip } from "./BaseChip";
+import { useTranslation } from "../i18n";
 
 interface DiarySearchChipProps {
   query?: string;
@@ -23,20 +24,21 @@ const colorScheme = {
 };
 
 export function DiarySearchChip({ query, maxResults, status }: DiarySearchChipProps) {
+  const { t } = useTranslation();
   const isActive = status !== "complete";
 
   return (
     <BaseChip
       isActive={isActive}
-      activeLabel="正在翻阅日记"
-      completeLabel="日记检索完成"
+      activeLabel={t("chips.diary.active")}
+      completeLabel={t("chips.diary.complete")}
       colorScheme={colorScheme}
       subtitle={
         query ? (
           <>
-            关键词：<span className="text-fortune-700 font-medium">{query}</span>
+            {t("chips.diary.keyword")}: <span className="text-fortune-700 font-medium">{query}</span>
             {maxResults && maxResults !== 5 && (
-              <span className="ml-1.5 opacity-60">· 最多{maxResults}条</span>
+              <span className="ml-1.5 opacity-60">· {t("chips.diary.maxResults").replace("{count}", String(maxResults))}</span>
             )}
           </>
         ) : undefined

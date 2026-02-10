@@ -35,8 +35,8 @@ from app.config import (
     THINKING_ENABLED,
     THINKING_LEVEL,
 )
-from app.agent.graph import search_diaries, query_bazi_info, query_tarot_info
-from app.agent.prompts import build_system_prompt
+from app.agent.graph import search_diaries, search_fortune_knowledge, generate_diary
+from app.agent.prompts import build_system_prompt, load_fortune_context
 from app.services.letta_service import letta_service
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class AgentState(CopilotKitState):
 
 # ── Tools ───────────────────────────────────────────────────────────
 
-BACKEND_TOOLS = [search_diaries, query_bazi_info, query_tarot_info]
+BACKEND_TOOLS = [search_diaries, search_fortune_knowledge, generate_diary]
 
 # Map tool name → tool object for invocation by ToolNode
 _TOOL_MAP = {t.name: t for t in BACKEND_TOOLS}
@@ -251,6 +251,7 @@ def _gemini_response_to_ai_message(
 
 async def agent_node(state: AgentState, config: RunnableConfig):
     user_id: str = config.get("configurable", {}).get("user_id", "")
+    language: str = config.get("configurable", {}).get("language", "zh-CN")
 
     user_profile = ""
     if user_id:
@@ -259,7 +260,18 @@ async def agent_node(state: AgentState, config: RunnableConfig):
         except Exception as exc:
             logger.warning("Profile fetch failed for %s: %s", user_id, exc)
 
-    system_prompt = build_system_prompt(user_profile=user_profile, today_fortune=None)
+    # Load fortune context from DB
+    fortune_ctx = await load_fortune_context(user_id)
+
+    system_prompt = build_system_prompt(
+        user_profile=user_profile,
+        today_fortune=fortune_ctx["today_fortune"],
+        daily_bazi=fortune_ctx["daily_bazi"],
+        daily_tarot=fortune_ctx["daily_tarot"],
+        recent_recharges_block=fortune_ctx["recent_recharges_block"],
+        yesterday_diary_block=fortune_ctx["yesterday_diary_block"],
+        language=language,
+    )
 
     # Convert LangChain messages to Gemini format
     all_messages = [SystemMessage(content=system_prompt), *state["messages"]]

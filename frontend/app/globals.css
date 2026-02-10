@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ─── Fonts (DM Sans + Fraunces, matching web2.html) ─── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&display=swap');
 
 /* ─── Design tokens (from web2.html T object) ─── */
 :root {
@@ -309,21 +309,28 @@ html, body {
 
 /* ─── Thinking bubble ─── */
 
-@keyframes thinkingPulse {
-  0%,100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
-}
-
-.thinking-pulse {
-  animation: thinkingPulse 2s ease-in-out infinite;
-}
-
 .thinking-content {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   max-height: 200px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.08) transparent;
+  scrollbar-color: rgba(0,0,0,0.06) transparent;
 }
 .thinking-content::-webkit-scrollbar { width: 3px; }
-.thinking-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 3px; }
+.thinking-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 3px; }
+
+/* Markdown inside thinking bubble */
+.thinking-content h1,.thinking-content h2,.thinking-content h3 { font-weight: 600; margin: .4em 0 .2em; }
+.thinking-content h1 { font-size: 1.15em; }
+.thinking-content h2 { font-size: 1.05em; }
+.thinking-content h3 { font-size: .95em; }
+.thinking-content p { margin: .25em 0; }
+.thinking-content strong { font-weight: 600; }
+.thinking-content em { font-style: italic; }
+.thinking-content ul,.thinking-content ol { padding-left: 1.2em; margin: .25em 0; }
+.thinking-content li { margin: .1em 0; }
+.thinking-content code { background: rgba(0,0,0,0.04); padding: .1em .3em; border-radius: 3px; font-size: .9em; }
+.thinking-content pre { background: rgba(0,0,0,0.03); padding: .5em; border-radius: 6px; overflow-x: auto; margin: .3em 0; }
+.thinking-content pre code { background: none; padding: 0; }
+.thinking-content blockquote { border-left: 2px solid rgba(0,0,0,0.08); padding-left: .6em; color: #aaa; margin: .3em 0; }
+.thinking-content a { color: #999; text-decoration: underline; }

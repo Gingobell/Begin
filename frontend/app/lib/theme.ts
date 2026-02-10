@@ -15,6 +15,8 @@ export const T = {
 
 export type ThemeColor = { p: string; s: string; soft: string; airy: string; cream?: string };
 
+export const iconSize = { nav: 40, tab: 30, btn: 30, card: 36 };
+
 export const navColors: Record<string, { light: string; dark: string; text: string }> = {
   overall: { light: "#FF8A6A", dark: "#FF6B4A", text: "#fff" },
   career:  { light: "#9BDFFD", dark: "#7DD3FC", text: "#1A5A7A" },
@@ -25,12 +27,12 @@ export const navColors: Record<string, { light: string; dark: string; text: stri
 };
 
 export const categories = [
-  { key: "overall", label: "Overall", icon: "☀️", theme: T.coral, desc: "Your day at a glance" },
-  { key: "career", label: "Career", icon: "💼", theme: T.career, desc: "Work & ambition" },
-  { key: "love", label: "Love", icon: "💕", theme: T.love, desc: "Heart & connection" },
-  { key: "wealth", label: "Wealth", icon: "💰", theme: T.wealth, desc: "Money & abundance" },
-  { key: "study", label: "Study", icon: "📚", theme: T.study, desc: "Growth & learning" },
-  { key: "social", label: "Social", icon: "👥", theme: T.social, desc: "Friends & community" },
+  { key: "overall", icon: "/icons/tile_1_nobg.png", theme: T.coral },
+  { key: "career", icon: "/icons/tile_2_nobg.png", theme: T.career },
+  { key: "love", icon: "/icons/tile_3_nobg.png", theme: T.love },
+  { key: "wealth", icon: "/icons/tile_4_nobg.png", theme: T.wealth },
+  { key: "study", icon: "/icons/tile_5_nobg.png", theme: T.study },
+  { key: "social", icon: "/icons/tile_6_nobg.png", theme: T.social },
 ];
 
 export const suggestedQuestions: Record<string, string[]> = {

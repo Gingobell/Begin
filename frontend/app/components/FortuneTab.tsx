@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getFortuneStatus, getDailyFortune } from "../lib/api";
-import { T, ThemeColor, categories, navColors } from "../lib/theme";
+import { T, ThemeColor, categories, navColors, iconSize } from "../lib/theme";
+import { useTranslation } from "../i18n";
 
 // ── Types ────────────────────────────────────────────────────────
 interface BatteryDomain {
@@ -37,9 +39,11 @@ interface FortuneData {
 }
 
 interface FortuneTabProps {
+  language?: string;
   onThemeChange: (theme: ThemeColor) => void;
   onRevealChange?: (revealed: boolean) => void;
   onActiveCatChange?: (cat: string) => void;
+  onFortuneChange?: (data: FortuneData | null) => void;
   headerSlot?: React.ReactNode;
 }
 
@@ -82,6 +86,7 @@ function ScoreRing({ score, size = 54, stroke = 5, color, glowColor }: {
 function CategorySidebar({ active, onChange }: {
   active: string; onChange: (key: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       width: 84, flexShrink: 0, display: "flex", flexDirection: "column",
@@ -108,12 +113,12 @@ function CategorySidebar({ active, onChange }: {
             transition: "all 0.35s cubic-bezier(0.2,0.8,0.2,1)",
             transform: isActive ? "scale(1.08)" : "scale(1)",
           }}>
-            <span style={{ filter: isActive ? "brightness(1.1)" : "none" }}>{c.icon}</span>
+            <img src={c.icon} alt={t(`nav.${c.key}`)} style={{ width: iconSize.nav, height: iconSize.nav, filter: isActive ? "brightness(1.1)" : "none" }} />
             <span style={{
               fontSize: 9, fontWeight: isActive ? 700 : 500,
               color: isActive ? nav.text : T.text.quaternary,
               transition: "color 0.3s",
-            }}>{c.label}</span>
+            }}>{t(`nav.${c.key}`)}</span>
           </button>
         );
       })}
@@ -121,180 +126,236 @@ function CategorySidebar({ active, onChange }: {
   );
 }
 
-// ── TarotDraw (5-card fan + flip animation) ──────────────────────
-function TarotDraw({ tarot, theme, onGenerate, generating }: {
-  tarot: any; theme: ThemeColor; onGenerate: () => void; generating: boolean;
+// ── Floating particles for mystical atmosphere ───────────────────
+function MysticalParticles({ theme }: { theme: ThemeColor }) {
+  const particles = Array.from({ length: 12 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: 2 + Math.random() * 3,
+    dur: 3 + Math.random() * 4,
+    delay: Math.random() * 3,
+  }));
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          style={{
+            position: "absolute", left: `${p.x}%`, top: `${p.y}%`,
+            width: p.size, height: p.size, borderRadius: "50%",
+            background: `radial-gradient(circle, ${theme.soft}, ${theme.p}40)`,
+          }}
+          animate={{ y: [0, -20, 0], opacity: [0.2, 0.7, 0.2] }}
+          transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Spring config for card flip ──────────────────────────────────
+const flipSpring = { type: "spring" as const, stiffness: 300, damping: 40 };
+
+// ── TarotDraw (immersive draw-card experience with framer-motion) ─
+function TarotDraw({ theme, onGenerate, generating, t }: {
+  theme: ThemeColor; onGenerate: () => void; generating: boolean; t: (key: string) => string;
 }) {
-  const [revealed, setRevealed] = useState(false);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const CARD_COUNT = 7;
+  const fanAngles = [-45, -30, -15, 0, 15, 30, 45];
+  const fanOffsets = [-18, -10, -4, 0, -4, -10, -18];
 
-  useEffect(() => {
-    if (tarot?.card) {
-      const t = setTimeout(() => setRevealed(true), 400);
-      return () => clearTimeout(t);
-    } else {
-      setRevealed(false);
-      setFlippedCards([]);
-    }
-  }, [tarot]);
+  const handleCardClick = (i: number) => {
+    if (selected !== null || generating) return;
+    setSelected(i);
+    onGenerate();
+  };
 
-  // Auto-flip cards sequentially after reveal
-  useEffect(() => {
-    if (revealed && flippedCards.length < 5) {
-      const t = setTimeout(() => {
-        setFlippedCards(prev => [...prev, prev.length]);
-      }, 300 + flippedCards.length * 200);
-      return () => clearTimeout(t);
-    }
-  }, [revealed, flippedCards.length]);
-
-  const fanAngles = [-24, -12, 0, 12, 24];
-  const fanOffsets = [-8, -3, 0, -3, -8];
-
-  if (!tarot?.card) {
-    // Not generated — show the diffuse sphere CTA with 5-card fan
-    return (
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", padding: "36px 0 28px", gap: 24,
-      }}>
-        {/* 5-card fan (face down) */}
-        <div style={{ position: "relative", width: 260, height: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {fanAngles.map((angle, i) => (
-            <div key={i} style={{
-              position: "absolute",
-              width: 72, height: 108, borderRadius: 12,
-              background: `linear-gradient(135deg, ${theme.soft}, ${theme.p}90)`,
-              border: `1px solid ${theme.p}30`,
-              boxShadow: `0 4px 16px ${theme.p}20`,
-              transform: `rotate(${angle}deg) translateY(${fanOffsets[i]}px)`,
-              transformOrigin: "center bottom",
-              transition: "all 0.5s cubic-bezier(0.2,0.8,0.2,1)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 5 - Math.abs(i - 2),
-            }}>
-              <span style={{ fontSize: 24, opacity: 0.6 }}>✦</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500, color: T.text.primary, marginBottom: 6 }}>
-            Today&apos;s Fortune
-          </p>
-          <p style={{ fontSize: 13, color: T.text.tertiary }}>
-            Tap to reveal your daily reading
-          </p>
-        </div>
-        <button onClick={onGenerate} disabled={generating} style={{
-          padding: "12px 36px", borderRadius: 100, border: "none", cursor: "pointer",
-          fontSize: 14, fontWeight: 600, fontFamily: "inherit", color: "#fff",
-          background: `linear-gradient(135deg,${theme.s},${theme.p})`,
-          boxShadow: `0 4px 20px ${theme.p}30`,
-          opacity: generating ? 0.7 : 1, transition: "all 0.2s",
-        }}>
-          {generating ? (
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />
-              <span className="pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />
-              <span className="pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />
-            </span>
-          ) : "Reveal Fortune"}
-        </button>
-      </div>
-    );
-  }
-
-  // Revealed tarot card with fan flip
-  const card = tarot.card;
-  const isUpright = tarot.orientation === "upright";
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "28px 0 20px", gap: 16,
+      justifyContent: "center", minHeight: "calc(100vh - 160px)",
+      position: "relative", padding: "20px 0",
     }}>
-      {/* 5-card fan (flipping) */}
-      <div style={{ position: "relative", width: 280, height: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <MysticalParticles theme={theme} />
+
+      {/* Title area */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        style={{ textAlign: "center", marginBottom: 48, position: "relative", zIndex: 1 }}
+      >
+        <p style={{
+          fontFamily: "'Fraunces',serif", fontSize: 28, fontWeight: 500,
+          color: T.text.primary, marginBottom: 8,
+          background: `linear-gradient(135deg, ${theme.p}, ${theme.s})`,
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        }}>
+          {t("fortune.chooseCard")}
+        </p>
+        <p style={{ fontSize: 14, color: T.text.tertiary, lineHeight: 1.6 }}>
+          {t("fortune.chooseCardHint")}
+        </p>
+      </motion.div>
+
+      {/* Card spread */}
+      <div style={{
+        position: "relative", width: "100%", maxWidth: 620,
+        height: 380, display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
         {fanAngles.map((angle, i) => {
-          const isFlipped = flippedCards.includes(i);
-          const isCenter = i === 2;
+          const isSelected = selected === i;
+          const isOther = selected !== null && !isSelected;
+          const isHov = hovered === i && selected === null;
           return (
-            <div key={i} style={{
-              position: "absolute",
-              width: isCenter ? 80 : 72, height: isCenter ? 116 : 108,
-              borderRadius: 12,
-              transform: `rotate(${angle}deg) translateY(${fanOffsets[i]}px) ${isFlipped ? "rotateY(180deg)" : ""}`,
-              transformOrigin: "center bottom",
-              transition: "all 0.6s cubic-bezier(0.2,0.8,0.2,1)",
-              transformStyle: "preserve-3d",
-              zIndex: isCenter ? 10 : 5 - Math.abs(i - 2),
-              perspective: 600,
-            }}>
-              {/* Back face */}
+            <motion.div
+              key={i}
+              onClick={() => handleCardClick(i)}
+              onHoverStart={() => selected === null && setHovered(i)}
+              onHoverEnd={() => setHovered(null)}
+              initial={{ opacity: 0, y: 60, rotate: 0 }}
+              animate={{
+                opacity: isOther ? 0 : 1,
+                y: isSelected ? -20 : isHov ? -18 : 0,
+                rotate: isSelected ? 0 : angle,
+                scale: isSelected ? 1.15 : isHov ? 1.08 : 1,
+                x: isSelected ? 0 : undefined,
+              }}
+              transition={{
+                opacity: { duration: 0.4 },
+                y: { type: "spring", stiffness: 200, damping: 25 },
+                rotate: { type: "spring", stiffness: 200, damping: 25 },
+                scale: { type: "spring", stiffness: 300, damping: 30 },
+                default: { delay: i * 0.08 },
+              }}
+              style={{
+                position: "absolute",
+                width: 140, height: 210,
+                cursor: selected === null && !generating ? "pointer" : "default",
+                transformOrigin: "center bottom",
+                zIndex: isSelected ? 20 : isHov ? 15 : 7 - Math.abs(i - 3),
+                perspective: 1000,
+                marginTop: fanOffsets[i],
+              }}
+            >
+              {/* Card container with 3D flip */}
               <div style={{
-                position: "absolute", inset: 0, borderRadius: 12,
-                background: `linear-gradient(135deg, ${theme.soft}, ${theme.p}90)`,
-                border: `1px solid ${theme.p}30`,
-                boxShadow: `0 4px 16px ${theme.p}20`,
-                backfaceVisibility: "hidden",
-                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "100%", height: "100%", position: "relative",
+                transformStyle: "preserve-3d",
               }}>
-                <span style={{ fontSize: 24, opacity: 0.6 }}>✦</span>
+                {/* Back face — frosted glass */}
+                <motion.div
+                  animate={{ rotateY: isSelected ? -180 : 0 }}
+                  transition={flipSpring}
+                  style={{
+                    position: "absolute", inset: 0, borderRadius: 14,
+                    overflow: "hidden", backfaceVisibility: "hidden",
+                    background: "rgba(255,255,255,0.55)",
+                    backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.7)",
+                    boxShadow: isHov
+                      ? `0 12px 40px ${theme.p}35, 0 0 20px ${theme.soft}50, inset 0 1px 0 rgba(255,255,255,0.8)`
+                      : `0 4px 20px rgba(0,0,0,0.08), 0 0 12px ${theme.soft}30, inset 0 1px 0 rgba(255,255,255,0.6)`,
+                    transition: "box-shadow 0.3s ease",
+                    zIndex: isSelected ? 0 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 24, opacity: 0.25, color: theme.p }}>✦</span>
+                  {/* Shimmer overlay on hover */}
+                  {isHov && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      style={{
+                        position: "absolute", inset: 0,
+                        background: `linear-gradient(135deg, transparent 30%, ${theme.soft}40 50%, transparent 70%)`,
+                        backgroundSize: "200% 200%",
+                        animation: "shimmer 1.5s ease-in-out infinite",
+                      }}
+                    />
+                  )}
+                </motion.div>
+
+                {/* Front face (placeholder — actual image shown in reveal phase) */}
+                <motion.div
+                  initial={{ rotateY: 180 }}
+                  animate={{ rotateY: isSelected ? 0 : 180 }}
+                  transition={flipSpring}
+                  style={{
+                    position: "absolute", inset: 0, borderRadius: 14,
+                    overflow: "hidden", backfaceVisibility: "hidden",
+                    boxShadow: `0 16px 48px ${theme.p}30, 0 0 30px ${theme.soft}40`,
+                    zIndex: isSelected ? 1 : 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: `linear-gradient(160deg, ${theme.airy}, ${theme.soft}60)`,
+                  }}
+                >
+                  {generating ? (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: theme.p }} />
+                      <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: theme.p }} />
+                      <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: theme.p }} />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 32, color: theme.p, opacity: 0.5 }}>✦</span>
+                  )}
+                </motion.div>
               </div>
-              {/* Front face */}
-              <div style={{
-                position: "absolute", inset: 0, borderRadius: 12,
-                background: `linear-gradient(135deg, rgba(255,255,255,0.95), ${theme.airy})`,
-                border: `1px solid ${theme.soft}60`,
-                boxShadow: isCenter ? `0 8px 28px ${theme.p}25` : `0 4px 16px ${theme.p}15`,
-                backfaceVisibility: "hidden",
-                transform: "rotateY(180deg)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexDirection: "column", gap: 2, padding: 6,
-              }}>
-                <span style={{ fontSize: isCenter ? 28 : 20 }}>🎴</span>
-                {isCenter && (
-                  <span style={{ fontSize: 8, fontWeight: 600, color: theme.p, textAlign: "center", lineHeight: 1.2 }}>
-                    {card.card_name?.split(" ").slice(0, 2).join(" ")}
-                  </span>
-                )}
-              </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
-      <div style={{
-        textAlign: "center",
-        opacity: revealed ? 1 : 0, transform: revealed ? "translateY(0)" : "translateY(12px)",
-        transition: "all 0.8s cubic-bezier(0.2,0.8,0.2,1)",
-      }}>
-        <p style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, color: T.text.primary }}>
-          {card.card_name}
-        </p>
-        <span style={{
-          display: "inline-block", marginTop: 6, padding: "3px 12px", borderRadius: 100,
-          fontSize: 11, fontWeight: 600,
-          background: isUpright ? "#dcfce7" : "#fee2e2",
-          color: isUpright ? "#16a34a" : "#dc2626",
-        }}>
-          {isUpright ? "Upright" : "Reversed"}
-        </span>
-        <p style={{ fontSize: 13, color: T.text.tertiary, marginTop: 8, maxWidth: 320, lineHeight: 1.6, margin: "8px auto 0" }}>
-          {isUpright ? card.meaning_up : card.meaning_down}
-        </p>
-      </div>
+      {/* Bottom hint */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: generating ? 0 : 1 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+        style={{
+          fontSize: 12, color: T.text.quaternary, marginTop: 40,
+          position: "relative", zIndex: 1,
+        }}
+      >
+        {selected !== null ? "" : t("fortune.cardsAwait").replace("{count}", String(CARD_COUNT))}
+      </motion.p>
+
+      {/* Generating overlay text */}
+      <AnimatePresence>
+        {generating && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{
+              marginTop: 24, textAlign: "center", position: "relative", zIndex: 1,
+            }}
+          >
+            <p style={{
+              fontFamily: "'Fraunces',serif", fontSize: 16, color: theme.p,
+              fontWeight: 500,
+            }}>
+              {t("fortune.readingStars")}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ── FullFortuneCard (single category card — matches web2.html) ────
 function FullFortuneCard({ cat, score, summary, insights, theme }: {
-  cat: { key: string; label: string; icon: string; desc: string };
+  cat: { key: string; icon: string; theme: ThemeColor };
   score: number;
   summary: string;
   insights: { t: string; x: string }[];
   theme: ThemeColor;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       borderRadius: 24, overflow: "hidden",
@@ -311,11 +372,10 @@ function FullFortuneCard({ cat, score, summary, insights, theme }: {
               width: 50, height: 50, borderRadius: 18,
               background: `${theme.soft}45`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 26,
-            }}>{cat.icon}</div>
+              }}><img src={cat.icon} alt={t(`nav.${cat.key}`)} style={{ width: iconSize.card, height: iconSize.card }} /></div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: T.text.primary }}>{cat.label}</div>
-              <div style={{ fontSize: 12, color: T.text.quaternary, marginTop: 2 }}>{cat.desc}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: T.text.primary }}>{t(`nav.${cat.key}`)}</div>
+              <div style={{ fontSize: 12, color: T.text.quaternary, marginTop: 2 }}>{t(`catDesc.${cat.key}`)}</div>
             </div>
           </div>
           <ScoreRing score={score} color={theme.p} size={64} glowColor={theme.p} />
@@ -343,7 +403,8 @@ function FullFortuneCard({ cat, score, summary, insights, theme }: {
 
 
 // ── FortuneTab (main export) ─────────────────────────────────────
-export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, headerSlot }: FortuneTabProps) {
+export function FortuneTab({ language, onThemeChange, onRevealChange, onActiveCatChange, onFortuneChange, headerSlot }: FortuneTabProps) {
+  const { t } = useTranslation();
   const [fortune, setFortune] = useState<FortuneData | null>(null);
   const [isGenerated, setIsGenerated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -366,6 +427,10 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
   useEffect(() => {
     onActiveCatChange?.(activeCat);
   }, [activeCat, onActiveCatChange]);
+
+  useEffect(() => {
+    onFortuneChange?.(fortune);
+  }, [fortune, onFortuneChange]);
 
   // IntersectionObserver: scroll tracking for active category
   useEffect(() => {
@@ -393,7 +458,7 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
       const s = await getFortuneStatus(today);
       setIsGenerated(s.is_generated);
       if (s.is_generated) {
-        const data = await getDailyFortune(today);
+        const data = await getDailyFortune(today, language);
         setFortune(data);
       }
     } catch (err: any) {
@@ -401,17 +466,42 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
     } finally {
       setLoading(false);
     }
-  }, [today]);
+  }, [today, language]);
 
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
 
+  // Re-fetch with force_regenerate when language changes (skip initial mount)
+  const langMountRef = useRef(true);
+  useEffect(() => {
+    if (langMountRef.current) {
+      langMountRef.current = false;
+      return;
+    }
+    if (!isGenerated) return;
+    let cancelled = false;
+    (async () => {
+      setGenerating(true);
+      try {
+        const data = await getDailyFortune(today, language, true);
+        if (!cancelled) {
+          setFortune(data);
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setGenerating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError("");
     try {
-      const data = await getDailyFortune(today);
+      const data = await getDailyFortune(today, language);
       setFortune(data);
       setIsGenerated(true);
     } catch (err: any) {
@@ -422,7 +512,6 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
   };
 
   const bat = fortune?.battery_fortune;
-  const tarot = fortune?.tarot_reading;
 
   // Build per-category card data from battery_fortune
   const buildCardData = (catKey: string) => {
@@ -435,10 +524,10 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
         score: scores["overall"] || Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / (Object.values(scores).length || 1)),
         summary: o.daily_management || "",
         insights: [
-          o.today_actions ? { t: "Today's Action", x: o.today_actions } : null,
-          o.power_drain ? { t: "Power Drain", x: o.power_drain } : null,
-          o.surge_protection ? { t: "Surge Protection", x: o.surge_protection } : null,
-          o.recharge ? { t: "Recharge", x: o.recharge } : null,
+          o.today_actions ? { t: t("fortune.todayAction"), x: o.today_actions } : null,
+          o.power_drain ? { t: t("fortune.powerDrain"), x: o.power_drain } : null,
+          o.surge_protection ? { t: t("fortune.surgeProtection"), x: o.surge_protection } : null,
+          o.recharge ? { t: t("fortune.recharge"), x: o.recharge } : null,
         ].filter(Boolean) as { t: string; x: string }[],
       };
     }
@@ -448,7 +537,7 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
       score: scores[catKey] || 0,
       summary: domain.status || "",
       insights: [
-        domain.suggestion ? { t: "Suggestion", x: domain.suggestion } : null,
+        domain.suggestion ? { t: t("fortune.suggestion"), x: domain.suggestion } : null,
       ].filter(Boolean) as { t: string; x: string }[],
     };
   };
@@ -487,7 +576,9 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
           }}>{error}</div>
         )}
 
-        <TarotDraw tarot={isGenerated ? tarot : null} theme={theme} onGenerate={handleGenerate} generating={generating} />
+        {!isGenerated && (
+          <TarotDraw theme={theme} onGenerate={handleGenerate} generating={generating} t={t} />
+        )}
 
         {isGenerated && bat && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 8 }}>
@@ -508,7 +599,7 @@ export function FortuneTab({ onThemeChange, onRevealChange, onActiveCatChange, h
             })}
 
             <div style={{ textAlign: "center", padding: "4px 0 8px" }}>
-              <span style={{ fontSize: 12, color: T.text.quaternary }}>The more you write, the smarter your fortune gets</span>
+              <span style={{ fontSize: 12, color: T.text.quaternary }}>{t("fortune.moreYouWrite")}</span>
             </div>
           </div>
         )}

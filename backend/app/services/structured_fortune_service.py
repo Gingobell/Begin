@@ -51,17 +51,17 @@ class AllCategoriesFortune(BaseModel):
 
 class OverallFortune(BaseModel):
     """综合运势板块"""
-    daily_management: str = Field(description="一句话描述今天整体会是什么感觉、适合什么节奏")
-    today_actions: str = Field(description="今天最顺手的一件事 需要来自于今日得分最高的领域, 一句话，可以稍微长一点 包括描述适合做什么+推荐行动")
-    power_drain: str = Field(description="今天可能卡的地方 来自于今天分数最低的领域 描述不适合做什么, 一句话")
-    surge_protection: str = Field(description="卡住了怎么办：一个边界 或 一个最省力替代，一句话")
-    recharge: str = Field(description="今天的小奖励，一句话，具体点, 从用户profile里面记录的的兴趣爱好里面选一件 不能用最近7天使用过的 如果没有可说的兴趣爱好 自行判断找一件用户会喜欢做的事")
+    daily_management: str = Field(description="2-3句话描述今天整体会是什么感觉、适合什么节奏")
+    today_actions: str = Field(description="今天最顺手的一件事 需要来自于今日得分最高的领域, 2-3句话 包括描述适合做什么+推荐行动")
+    power_drain: str = Field(description="今天可能卡的地方 来自于今天分数最低的领域 描述不适合做什么, 2-3句话")
+    surge_protection: str = Field(description="卡住了怎么办：一个边界 或 一个最省力替代，2-3句话")
+    recharge: str = Field(description="今天的小奖励，2-3句话，具体点, 从用户profile里面记录的的兴趣爱好里面选一件 不能用最近7天使用过的 如果没有可说的兴趣爱好 自行判断找一件用户会喜欢做的事")
 
 
 class DomainFortune(BaseModel):
     """分领域运势"""
-    status: str = Field(description="这个领域今天什么状态，顺的顺在哪，卡的卡在哪, 不许提起这个领域的名字")
-    suggestion: str = Field(description="一个动作或一句提醒，像朋友的建议一样")
+    status: str = Field(description="这个领域今天什么状态，顺的顺在哪，卡的卡在哪, 不许提起这个领域的名字, 2-3句话")
+    suggestion: str = Field(description="一个动作或提醒，像朋友的建议一样, 2-3句话")
 
 
 class BatteryFortuneResponse(BaseModel):

@@ -1,4 +1,5 @@
 from cnlunar import Lunar
+import sxtwl  # 以节气（立春）为界的干支计算
 from datetime import date, datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -183,12 +184,16 @@ class BaZiService:
             return "未知"
         return stem_map.get(branch, "未知")
 
+    # sxtwl 天干地支索引表
+    _TG_LIST = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+    _DZ_LIST = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
     def analyze_daily_flow(self, birth_date: date, target_date: Optional[date] = None, language: str = "zh-CN") -> Dict:
         """分析当日流日运势"""
         bazi_data = self.calculate_bazi(birth_date)
         day_master_char = bazi_data['day_master']
         body_strength = bazi_data['body_strength']
-        
+
         # 获取用户日支用于后续判断
         user_day_branch = bazi_data['day_pillar'][1]
         year_stem_char = bazi_data['year_pillar'][0]
@@ -198,9 +203,14 @@ class BaZiService:
         else:
             flow_datetime = datetime.now()
 
-        flow_day_lunar = Lunar(flow_datetime)
-        daily_stem = flow_day_lunar.day8Char[0]
-        daily_branch = flow_day_lunar.day8Char[1]
+        # 使用 sxtwl 以节气（立春）为界计算流年/流月/流日干支
+        day = sxtwl.fromSolar(flow_datetime.year, flow_datetime.month, flow_datetime.day)
+        flow_year_stem = self._TG_LIST[day.getYearGZ().tg]
+        flow_year_branch = self._DZ_LIST[day.getYearGZ().dz]
+        flow_month_stem = self._TG_LIST[day.getMonthGZ().tg]
+        flow_month_branch = self._DZ_LIST[day.getMonthGZ().dz]
+        daily_stem = self._TG_LIST[day.getDayGZ().tg]
+        daily_branch = self._DZ_LIST[day.getDayGZ().dz]
 
         stem_relation_raw = self._get_ten_god_relation(day_master_char, daily_stem)
         branch_main_stem = self.EARTHLY_BRANCHES[daily_branch]['main_hidden_stem']
@@ -208,12 +218,12 @@ class BaZiService:
 
         energy_phase = self.get_12_phase(day_master_char, daily_branch)
         branch_relation_type = self._get_branch_relationship(user_day_branch, daily_branch)
-        
+
         nobleman_score = self._calculate_nobleman_score(
             day_master_char, year_stem_char, daily_branch, user_day_branch
         )
 
-        return {
+        result = {
             "day_master": translate_heavenly_stem(day_master_char, language),
             "body_strength": body_strength,
             "energy_phase": energy_phase,
@@ -228,9 +238,33 @@ class BaZiService:
                 "analysis": translate_ten_god_analysis(branch_relation_raw, language),
                 "relation_type": branch_relation_type
             },
+            "flow_year": {"stem": flow_year_stem, "branch": flow_year_branch},
+            "flow_month": {"stem": flow_month_stem, "branch": flow_month_branch},
+            "flow_day": {"stem": daily_stem, "branch": daily_branch},
+            # 兼容旧字段名
             "daily_pillar": {"stem": daily_stem, "branch": daily_branch},
             "nobleman_score": nobleman_score
         }
+
+        # Log warning for any missing required fields
+        required_fields = {
+            "day_master": result.get("day_master"),
+            "body_strength": result.get("body_strength"),
+            "energy_phase": result.get("energy_phase"),
+            "flow_year.stem": result.get("flow_year", {}).get("stem"),
+            "flow_year.branch": result.get("flow_year", {}).get("branch"),
+            "flow_month.stem": result.get("flow_month", {}).get("stem"),
+            "flow_month.branch": result.get("flow_month", {}).get("branch"),
+            "flow_day.stem": result.get("flow_day", {}).get("stem"),
+            "flow_day.branch": result.get("flow_day", {}).get("branch"),
+            "stem_influence.relation": result.get("stem_influence", {}).get("relation"),
+            "branch_influence.relation": result.get("branch_influence", {}).get("relation"),
+        }
+        missing = [k for k, v in required_fields.items() if not v]
+        if missing:
+            logging.warning(f"八字分析缺少必要字段: {', '.join(missing)} (birth_date={birth_date}, target_date={target_date})")
+
+        return result
 
     # =========================================================================
     # 3. 辅助计算逻辑 (Internal Helpers)

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslation } from "./i18n";
 
 type AuthMode = "login" | "signup";
 type QuestionType = "input" | "date" | "single" | "multi";
@@ -22,178 +24,6 @@ type FlowQuestion = {
   required?: boolean;
 };
 
-const questions: Record<string, FlowQuestion> = {
-  name: {
-    id: "name",
-    type: "input",
-    prompt: "What should we call you?",
-    help: "We'll use this name in your daily guidance.",
-    placeholder: "e.g. Gin",
-    required: true,
-  },
-  gender: {
-    id: "gender",
-    type: "single",
-    prompt: "What's your gender?",
-    options: [
-      { value: "male", label: "Male" },
-      { value: "female", label: "Female" },
-      { value: "other", label: "Other" },
-    ],
-    required: true,
-  },
-  birthday: {
-    id: "birthday",
-    type: "date",
-    prompt: "When is your birthday?",
-    help: "Used to generate your base rhythm profile.",
-    required: true,
-  },
-  region: {
-    id: "region",
-    type: "single",
-    prompt: "Where do you currently live?",
-    options: [
-      { value: "china", label: "China" },
-      { value: "usa", label: "United States" },
-      { value: "canada", label: "Canada" },
-      { value: "other", label: "Other" },
-    ],
-    required: true,
-  },
-  status: {
-    id: "status",
-    type: "single",
-    prompt: "What best describes your current status?",
-    options: [
-      { value: "student", label: "Student" },
-      { value: "working", label: "Working" },
-    ],
-    required: true,
-  },
-  student_industry: {
-    id: "student_industry",
-    type: "multi",
-    prompt: "Which fields interest you most?",
-    options: [
-      { value: "tech", label: "Tech & Internet" },
-      { value: "finance", label: "Finance & Business" },
-      { value: "creative", label: "Creative & Media" },
-      { value: "edu", label: "Education & Research" },
-      { value: "unsure", label: "Not sure yet" },
-    ],
-    required: true,
-  },
-  student_focus: {
-    id: "student_focus",
-    type: "multi",
-    prompt: "What are you focused on right now?",
-    options: [
-      { value: "study", label: "Academic study" },
-      { value: "job", label: "Jobs & internships" },
-      { value: "skill", label: "Skill building" },
-      { value: "network", label: "Networking" },
-      { value: "balance", label: "Life balance" },
-      { value: "explore", label: "Exploring direction" },
-    ],
-    required: true,
-  },
-  relationship_student: {
-    id: "relationship_student",
-    type: "multi",
-    prompt: "What's your relationship status?",
-    help: "Optional",
-    options: [
-      { value: "single", label: "Single" },
-      { value: "dating", label: "Dating" },
-      { value: "partnered", label: "In a relationship" },
-      { value: "complex", label: "It's complicated" },
-    ],
-    optional: true,
-    required: false,
-  },
-  work_type: {
-    id: "work_type",
-    type: "multi",
-    prompt: "What type of work do you do?",
-    options: [
-      { value: "fulltime", label: "Full-time" },
-      { value: "parttime", label: "Part-time" },
-      { value: "freelance", label: "Freelance" },
-      { value: "startup", label: "Building a startup" },
-    ],
-    required: true,
-  },
-  industry: {
-    id: "industry",
-    type: "multi",
-    prompt: "Which industry are you in?",
-    options: [
-      { value: "tech", label: "Tech & Internet" },
-      { value: "finance", label: "Finance & Business" },
-      { value: "creative", label: "Creative & Media" },
-      { value: "edu", label: "Education & Research" },
-      { value: "other", label: "Other" },
-    ],
-    required: true,
-  },
-  role: {
-    id: "role",
-    type: "multi",
-    prompt: "Which role best matches your work?",
-    options: [
-      { value: "engineer", label: "Engineering" },
-      { value: "product", label: "Product" },
-      { value: "design", label: "Design" },
-      { value: "marketing", label: "Marketing" },
-      { value: "sales", label: "Sales" },
-      { value: "admin", label: "Operations & admin" },
-      { value: "other", label: "Other" },
-    ],
-    required: true,
-  },
-  rhythm: {
-    id: "rhythm",
-    type: "multi",
-    prompt: "What's your work rhythm?",
-    options: [
-      { value: "remote", label: "Remote" },
-      { value: "onsite", label: "On-site" },
-      { value: "hybrid", label: "Hybrid" },
-      { value: "travel", label: "Frequent travel" },
-    ],
-    required: true,
-  },
-  relationship_working: {
-    id: "relationship_working",
-    type: "multi",
-    prompt: "What's your relationship status?",
-    help: "Optional",
-    options: [
-      { value: "single", label: "Single" },
-      { value: "dating", label: "Dating" },
-      { value: "partnered", label: "In a relationship" },
-      { value: "complex", label: "It's complicated" },
-    ],
-    optional: true,
-    required: false,
-  },
-  income: {
-    id: "income",
-    type: "multi",
-    prompt: "What's your income mix?",
-    help: "Optional",
-    options: [
-      { value: "salary", label: "Salary" },
-      { value: "bonus", label: "Bonus / Commission" },
-      { value: "invest", label: "Investments" },
-      { value: "side", label: "Side income" },
-      { value: "other", label: "Other" },
-    ],
-    optional: true,
-    required: false,
-  },
-};
 
 const baseSequence = ["name", "gender", "birthday", "region", "status"];
 const studentSequence = ["name", "gender", "birthday", "region", "status", "student_industry", "student_focus", "relationship_student"];
@@ -247,6 +77,8 @@ function getNextQuestionId(id: string, answers: Record<string, FlowAnswerValue>)
 }
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { t } = useTranslation();
   const landingRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const authTimerRef = useRef<number | null>(null);
@@ -270,9 +102,6 @@ export default function LandingPage() {
   const [flowError, setFlowError] = useState("");
   const [flowComplete, setFlowComplete] = useState(false);
 
-  const [fortuneOpen, setFortuneOpen] = useState(false);
-  const [fortuneStatus, setFortuneStatus] = useState("Loading your personalized daily fortune...");
-  const [fortuneLoaded, setFortuneLoaded] = useState(false);
 
   const activeSequence = useMemo(() => {
     if (flowAnswers.status === "student") return studentSequence;
@@ -280,14 +109,187 @@ export default function LandingPage() {
     return baseSequence;
   }, [flowAnswers.status]);
 
+  const questions: Record<string, FlowQuestion> = useMemo(() => ({
+    name: {
+      id: "name",
+      type: "input",
+      prompt: t("onboarding.name.prompt"),
+      help: t("onboarding.name.help"),
+      placeholder: t("onboarding.name.placeholder"),
+      required: true,
+    },
+    gender: {
+      id: "gender",
+      type: "single",
+      prompt: t("onboarding.gender.prompt"),
+      options: [
+        { value: "male", label: t("onboarding.gender.male") },
+        { value: "female", label: t("onboarding.gender.female") },
+        { value: "other", label: t("onboarding.gender.other") },
+      ],
+      required: true,
+    },
+    birthday: {
+      id: "birthday",
+      type: "date",
+      prompt: t("onboarding.birthday.prompt"),
+      help: t("onboarding.birthday.help"),
+      required: true,
+    },
+    region: {
+      id: "region",
+      type: "single",
+      prompt: t("onboarding.region.prompt"),
+      options: [
+        { value: "china", label: t("onboarding.region.china") },
+        { value: "usa", label: t("onboarding.region.usa") },
+        { value: "canada", label: t("onboarding.region.canada") },
+        { value: "other", label: t("onboarding.region.other") },
+      ],
+      required: true,
+    },
+    status: {
+      id: "status",
+      type: "single",
+      prompt: t("onboarding.status.prompt"),
+      options: [
+        { value: "student", label: t("onboarding.status.student") },
+        { value: "working", label: t("onboarding.status.working") },
+      ],
+      required: true,
+    },
+    student_industry: {
+      id: "student_industry",
+      type: "multi",
+      prompt: t("onboarding.studentIndustry.prompt"),
+      options: [
+        { value: "tech", label: t("onboarding.studentIndustry.tech") },
+        { value: "finance", label: t("onboarding.studentIndustry.finance") },
+        { value: "creative", label: t("onboarding.studentIndustry.creative") },
+        { value: "edu", label: t("onboarding.studentIndustry.edu") },
+        { value: "unsure", label: t("onboarding.studentIndustry.unsure") },
+      ],
+      required: true,
+    },
+    student_focus: {
+      id: "student_focus",
+      type: "multi",
+      prompt: t("onboarding.studentFocus.prompt"),
+      options: [
+        { value: "study", label: t("onboarding.studentFocus.study") },
+        { value: "job", label: t("onboarding.studentFocus.job") },
+        { value: "skill", label: t("onboarding.studentFocus.skill") },
+        { value: "network", label: t("onboarding.studentFocus.network") },
+        { value: "balance", label: t("onboarding.studentFocus.balance") },
+        { value: "explore", label: t("onboarding.studentFocus.explore") },
+      ],
+      required: true,
+    },
+    relationship_student: {
+      id: "relationship_student",
+      type: "multi",
+      prompt: t("onboarding.relationship.prompt"),
+      help: t("onboarding.relationship.help"),
+      options: [
+        { value: "single", label: t("onboarding.relationship.single") },
+        { value: "dating", label: t("onboarding.relationship.dating") },
+        { value: "partnered", label: t("onboarding.relationship.partnered") },
+        { value: "complex", label: t("onboarding.relationship.complex") },
+      ],
+      optional: true,
+      required: false,
+    },
+    work_type: {
+      id: "work_type",
+      type: "multi",
+      prompt: t("onboarding.workType.prompt"),
+      options: [
+        { value: "fulltime", label: t("onboarding.workType.fulltime") },
+        { value: "parttime", label: t("onboarding.workType.parttime") },
+        { value: "freelance", label: t("onboarding.workType.freelance") },
+        { value: "startup", label: t("onboarding.workType.startup") },
+      ],
+      required: true,
+    },
+    industry: {
+      id: "industry",
+      type: "multi",
+      prompt: t("onboarding.industry.prompt"),
+      options: [
+        { value: "tech", label: t("onboarding.industry.tech") },
+        { value: "finance", label: t("onboarding.industry.finance") },
+        { value: "creative", label: t("onboarding.industry.creative") },
+        { value: "edu", label: t("onboarding.industry.edu") },
+        { value: "other", label: t("onboarding.industry.other") },
+      ],
+      required: true,
+    },
+    role: {
+      id: "role",
+      type: "multi",
+      prompt: t("onboarding.role.prompt"),
+      options: [
+        { value: "engineer", label: t("onboarding.role.engineer") },
+        { value: "product", label: t("onboarding.role.product") },
+        { value: "design", label: t("onboarding.role.design") },
+        { value: "marketing", label: t("onboarding.role.marketing") },
+        { value: "sales", label: t("onboarding.role.sales") },
+        { value: "admin", label: t("onboarding.role.admin") },
+        { value: "other", label: t("onboarding.role.other") },
+      ],
+      required: true,
+    },
+    rhythm: {
+      id: "rhythm",
+      type: "multi",
+      prompt: t("onboarding.rhythm.prompt"),
+      options: [
+        { value: "remote", label: t("onboarding.rhythm.remote") },
+        { value: "onsite", label: t("onboarding.rhythm.onsite") },
+        { value: "hybrid", label: t("onboarding.rhythm.hybrid") },
+        { value: "travel", label: t("onboarding.rhythm.travel") },
+      ],
+      required: true,
+    },
+    relationship_working: {
+      id: "relationship_working",
+      type: "multi",
+      prompt: t("onboarding.relationship.prompt"),
+      help: t("onboarding.relationship.help"),
+      options: [
+        { value: "single", label: t("onboarding.relationship.single") },
+        { value: "dating", label: t("onboarding.relationship.dating") },
+        { value: "partnered", label: t("onboarding.relationship.partnered") },
+        { value: "complex", label: t("onboarding.relationship.complex") },
+      ],
+      optional: true,
+      required: false,
+    },
+    income: {
+      id: "income",
+      type: "multi",
+      prompt: t("onboarding.income.prompt"),
+      help: t("onboarding.income.help"),
+      options: [
+        { value: "salary", label: t("onboarding.income.salary") },
+        { value: "bonus", label: t("onboarding.income.bonus") },
+        { value: "invest", label: t("onboarding.income.invest") },
+        { value: "side", label: t("onboarding.income.side") },
+        { value: "other", label: t("onboarding.income.other") },
+      ],
+      optional: true,
+      required: false,
+    },
+  }), [t]);
+
   const currentQuestion = questions[flowCurrentId];
   const step = flowComplete ? activeSequence.length : Math.max(activeSequence.indexOf(flowCurrentId) + 1, 1);
   const total = activeSequence.length;
   const nextQuestionId = flowComplete ? null : getNextQuestionId(flowCurrentId, flowAnswers);
 
-  const flowQuestionTag = flowComplete ? "Done" : `Q${step} · ${currentQuestion?.id || "question"}`;
-  const flowPrompt = flowComplete ? "Profile complete. Opening your daily fortune..." : currentQuestion?.prompt || "";
-  const flowHelp = flowComplete ? "Your base profile has been created." : currentQuestion?.help || "";
+  const flowQuestionTag = flowComplete ? t("common.done") : `Q${step} · ${currentQuestion?.id || "question"}`;
+  const flowPrompt = flowComplete ? t("landing.profileComplete") : currentQuestion?.prompt || "";
+  const flowHelp = flowComplete ? t("landing.profileCompleteHelp") : currentQuestion?.help || "";
   const flowProgress = Math.round(((flowComplete ? total : step) / Math.max(total, 1)) * 100);
 
   useEffect(() => {
@@ -337,19 +339,9 @@ export default function LandingPage() {
     return () => document.body.classList.remove("flow-open");
   }, [profileOpen]);
 
-  useEffect(() => {
-    document.body.classList.toggle("fortune-open", fortuneOpen);
-    return () => document.body.classList.remove("fortune-open");
-  }, [fortuneOpen]);
-
-  useEffect(() => {
+useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-
-      if (fortuneOpen) {
-        setFortuneOpen(false);
-        return;
-      }
 
       if (profileOpen) {
         setProfileOpen(false);
@@ -365,7 +357,7 @@ export default function LandingPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [authOpen, profileOpen, fortuneOpen]);
+  }, [authOpen, profileOpen]);
 
   useEffect(() => {
     return () => {
@@ -394,16 +386,6 @@ export default function LandingPage() {
     }
     setProfileOpen(false);
     setFlowError("");
-  };
-
-  const openFortunePortal = (statusText: string) => {
-    setFortuneStatus(statusText);
-    closeAuthPanel();
-    closeProfileFlow();
-    setFortuneOpen(true);
-    if (!fortuneLoaded) {
-      setFortuneLoaded(true);
-    }
   };
 
   const openAuth = (mode: AuthMode) => {
@@ -442,7 +424,7 @@ export default function LandingPage() {
 
     if (currentQuestion.type === "input" || currentQuestion.type === "date") {
       if (typeof value !== "string" || !value.trim()) {
-        setFlowError("Please fill this in before continuing.");
+        setFlowError(t("landing.pleaseFillin"));
         return false;
       }
       return true;
@@ -450,7 +432,7 @@ export default function LandingPage() {
 
     if (currentQuestion.type === "single") {
       if (typeof value !== "string" || !value) {
-        setFlowError("Please choose one option.");
+        setFlowError(t("landing.pleaseChooseOne"));
         return false;
       }
       return true;
@@ -459,7 +441,7 @@ export default function LandingPage() {
     if (currentQuestion.type === "multi") {
       const selected = Array.isArray(value) ? value : [];
       if (selected.length === 0) {
-        setFlowError("Please select at least one option.");
+        setFlowError(t("landing.pleaseSelectOne"));
         return false;
       }
       return true;
@@ -489,7 +471,7 @@ export default function LandingPage() {
     }
 
     flowTimerRef.current = window.setTimeout(() => {
-      openFortunePortal("Profile complete. Opening your daily fortune...");
+      closeProfileFlow();
     }, 700);
   };
 
@@ -571,14 +553,15 @@ export default function LandingPage() {
       return;
     }
 
-    setAuthSuccess("Login successful. Opening your daily fortune...");
+    setAuthSuccess(t("auth.loginSuccess"));
 
     if (authTimerRef.current) {
       window.clearTimeout(authTimerRef.current);
     }
 
     authTimerRef.current = window.setTimeout(() => {
-      openFortunePortal("Welcome back. Loading your daily fortune...");
+      closeAuthPanel();
+      router.push("/home");
     }, 420);
   };
 
@@ -591,7 +574,7 @@ export default function LandingPage() {
       return;
     }
 
-    setAuthSuccess("Registration successful. Starting profile questions...");
+    setAuthSuccess(t("auth.signupSuccess"));
 
     if (authTimerRef.current) {
       window.clearTimeout(authTimerRef.current);
@@ -657,7 +640,7 @@ export default function LandingPage() {
                   scrollToSection("different");
                 }}
               >
-                Why Begin
+                {t("landing.whyBegin")}
               </a>
               <a
                 href="#action"
@@ -667,7 +650,7 @@ export default function LandingPage() {
                   scrollToSection("action");
                 }}
               >
-                See it work
+                {t("landing.seeItWork")}
               </a>
               <a
                 href="#engine"
@@ -677,7 +660,7 @@ export default function LandingPage() {
                   scrollToSection("engine");
                 }}
               >
-                How it works
+                {t("landing.howItWorks")}
               </a>
               <button
                 className="candy-btn candy-btn--coral"
@@ -685,7 +668,7 @@ export default function LandingPage() {
                 style={{ padding: "10px 24px", fontSize: 13 }}
                 onClick={() => openAuth("signup")}
               >
-                Get Started
+                {t("landing.getStarted")}
               </button>
             </div>
           </div>
@@ -696,21 +679,21 @@ export default function LandingPage() {
             <div className="hero__stage">
               <div className="hero__content">
                 <h1 className="hero__title">
-                  Begin
+                  {t("landing.heroTitle")}
                   <br />
                   <em>
-                    Your Personal Daily
+                    {t("landing.heroSubtitleEm").split("\n")[0]}
                     <br />
-                    Fortune Forecast
+                    {t("landing.heroSubtitleEm").split("\n")[1]}
                   </em>
                 </h1>
-                <p className="hero__subtitle">Check today's energy rhythm, just like checking weather</p>
+                <p className="hero__subtitle">{t("landing.heroDesc")}</p>
                 <div className="hero__actions">
                   <button className="candy-btn candy-btn--coral" type="button" onClick={() => openAuth("login")}>
-                    Log In / Sign Up
+                    {t("auth.logInSignUp")}
                   </button>
                   <button className="glass-btn" type="button" onClick={() => scrollToSection("different")}>
-                    Learn More ↓
+                    {t("landing.learnMore")}
                   </button>
                 </div>
               </div>
@@ -721,37 +704,33 @@ export default function LandingPage() {
         <section className="page different" id="different">
           <div className="container">
             <div className="fade-in">
-              <div className="section-label">A different kind of forecast</div>
-              <h2 className="section-title">Why is Begin different?</h2>
+              <div className="section-label">{t("landing.differentLabel")}</div>
+              <h2 className="section-title">{t("landing.differentTitle")}</h2>
             </div>
 
             <div className="compare-duo fade-in">
               <div className="compare-card compare-card--other">
-                <div className="compare-card__label">Other Apps</div>
-                <div className="compare-card__text">"Good day to travel. Financial energy neutral. Be cautious with decisions."</div>
+                <div className="compare-card__label">{t("landing.otherApps")}</div>
+                <div className="compare-card__text">{t("landing.otherAppsText")}</div>
               </div>
               <div className="compare-card compare-card--begin">
-                <div className="compare-card__label">Begin</div>
-                <div className="compare-card__text">
-                  "That pitch you're nervous about? <strong>Your energy says direct words hit today.</strong> Go for it."
-                </div>
+                <div className="compare-card__label">{t("landing.beginLabel")}</div>
+                <div className="compare-card__text" dangerouslySetInnerHTML={{ __html: t("landing.beginText") }} />
               </div>
             </div>
 
-            <div className="section-quote fade-in">
-              Other apps read a chart. Begin reads <em>you</em>.
-            </div>
+            <div className="section-quote fade-in" dangerouslySetInnerHTML={{ __html: t("landing.sectionQuote") }} />
           </div>
         </section>
 
         <section className="page action" id="action">
           <div className="container">
             <div className="fade-in" style={{ marginBottom: 32 }}>
-              <div className="section-label">See it in action</div>
+              <div className="section-label">{t("landing.actionLabel")}</div>
               <h2 className="section-title">
-                Yesterday, you asked for a raise —
+                {t("landing.actionTitle").split("\n")[0]}
                 <br />
-                and Begin already knew it would work.
+                {t("landing.actionTitle").split("\n")[1]}
               </h2>
             </div>
 
@@ -761,51 +740,51 @@ export default function LandingPage() {
 
                 <div className="timeline__node">
                   <div className="timeline__dot" />
-                  <div className="timeline__time">Last night · 10 PM</div>
+                  <div className="timeline__time">{t("landing.timelineTime1")}</div>
                   <div className="timeline__card">
-                    <strong>You wrote</strong>
-                    "Asking boss for a raise tomorrow. Uncertain about timing..."
+                    <strong>{t("landing.timelineYouWrote")}</strong>
+                    {t("landing.timelineYouWroteText")}
                   </div>
                 </div>
 
                 <div className="timeline__node">
                   <div className="timeline__dot" />
-                  <div className="timeline__time">Morning · 7:30 AM</div>
+                  <div className="timeline__time">{t("landing.timelineTime2")}</div>
                   <div className="timeline__card">
-                    <strong>Begin says</strong>
-                    Communication <span className="stars">★★★★★</span>
+                    <strong>{t("landing.timelineBeginSays")}</strong>
+                    {t("landing.communication")} <span className="stars">★★★★★</span>
                     <br />
-                    Honesty is your edge today. The energy favors bold moves — trust your gut.
+                    {t("landing.timelineBeginSaysText")}
                   </div>
                 </div>
 
                 <div className="timeline__node">
                   <div className="timeline__dot" />
-                  <div className="timeline__time">Evening · 7 PM</div>
+                  <div className="timeline__time">{t("landing.timelineTime3")}</div>
                   <div className="timeline__card">
-                    <strong>You wrote back</strong>
-                    "Got it. Felt so confident. Best decision."
+                    <strong>{t("landing.timelineYouWroteBack")}</strong>
+                    {t("landing.timelineYouWroteBackText")}
                   </div>
                 </div>
               </div>
 
               <div className="action-aside">
-                <div className="action-aside__title">Just 90 seconds a day</div>
-                <div className="action-aside__sub">That's all it takes</div>
+                <div className="action-aside__title">{t("landing.just90Seconds")}</div>
+                <div className="action-aside__sub">{t("landing.thatsAllItTakes")}</div>
 
                 <div className="time-capsule time-capsule--morning">
                   <div className="time-capsule__glow">AM</div>
                   <div className="time-capsule__info">
-                    <div className="time-capsule__label">Morning · 30s</div>
-                    <div className="time-capsule__desc">30 seconds. You'll know.</div>
+                    <div className="time-capsule__label">{t("landing.morningLabel")}</div>
+                    <div className="time-capsule__desc">{t("landing.morningDesc")}</div>
                   </div>
                 </div>
 
                 <div className="time-capsule time-capsule--evening">
                   <div className="time-capsule__glow">PM</div>
                   <div className="time-capsule__info">
-                    <div className="time-capsule__label">Evening · 60s</div>
-                    <div className="time-capsule__desc">Tell it tonight. See it tomorrow.</div>
+                    <div className="time-capsule__label">{t("landing.eveningLabel")}</div>
+                    <div className="time-capsule__desc">{t("landing.eveningDesc")}</div>
                   </div>
                 </div>
               </div>
@@ -816,10 +795,10 @@ export default function LandingPage() {
         <section className="page engine" id="engine">
           <div className="container">
             <div className="fade-in" style={{ marginBottom: 32 }}>
-              <div className="section-label">Day 1 it listens. Day 5 it knows.</div>
-              <h2 className="section-title">What powers your forecast</h2>
+              <div className="section-label">{t("landing.engineLabel")}</div>
+              <h2 className="section-title">{t("landing.engineTitle")}</h2>
               <p style={{ fontSize: 16, color: "var(--text-secondary)", maxWidth: 500, margin: "0 auto" }}>
-                Ancient patterns. Daily cards. And everything about you.
+                {t("landing.engineDesc")}
               </p>
             </div>
 
@@ -827,28 +806,28 @@ export default function LandingPage() {
               <div className="growth-card">
                 <div className="growth-card__glow" />
                 <div className="growth-card__dot" />
-                <div className="growth-card__phase">Day 1 · Meeting you</div>
-                <div className="growth-card__title">Your birth chart speaks</div>
-                <div className="growth-card__desc">BaZi + Tarot give you a baseline forecast — accurate, but still general.</div>
-                <div className="growth-card__quote">"Good day for socializing, wealth energy steady."</div>
+                <div className="growth-card__phase">{t("landing.day1Phase")}</div>
+                <div className="growth-card__title">{t("landing.day1Title")}</div>
+                <div className="growth-card__desc">{t("landing.day1Desc")}</div>
+                <div className="growth-card__quote">{t("landing.day1Quote")}</div>
               </div>
 
               <div className="growth-card">
                 <div className="growth-card__glow" />
                 <div className="growth-card__dot" />
-                <div className="growth-card__phase">Days 2-4 · Learning you</div>
-                <div className="growth-card__title">Your diary teaches Begin</div>
-                <div className="growth-card__desc">Patterns emerge from what you write — goals, worries, rhythm. Forecasts start to feel personal.</div>
-                <div className="growth-card__quote">"Tomorrow's pitch — communication energy at its best. You're well-prepared."</div>
+                <div className="growth-card__phase">{t("landing.day2Phase")}</div>
+                <div className="growth-card__title">{t("landing.day2Title")}</div>
+                <div className="growth-card__desc">{t("landing.day2Desc")}</div>
+                <div className="growth-card__quote">{t("landing.day2Quote")}</div>
               </div>
 
               <div className="growth-card">
                 <div className="growth-card__glow" />
                 <div className="growth-card__dot" />
-                <div className="growth-card__phase">Day 5+ · Knowing you</div>
-                <div className="growth-card__title">Your personal oracle</div>
-                <div className="growth-card__desc">Birth chart + Tarot + full memory of who you are. Every forecast is yours alone.</div>
-                <div className="growth-card__quote">"Creative energy is high — push that project you've been mulling over."</div>
+                <div className="growth-card__phase">{t("landing.day5Phase")}</div>
+                <div className="growth-card__title">{t("landing.day5Title")}</div>
+                <div className="growth-card__desc">{t("landing.day5Desc")}</div>
+                <div className="growth-card__quote">{t("landing.day5Quote")}</div>
               </div>
             </div>
           </div>
@@ -858,20 +837,20 @@ export default function LandingPage() {
           <div className="container">
             <div className="fade-in">
               <h2 className="cta__title">
-                The more you write,
+                {t("landing.ctaTitle").split("\n")[0]}
                 <br />
-                the wiser it gets.
+                {t("landing.ctaTitle").split("\n")[1]}
               </h2>
-              <p className="cta__desc">Record today. Foresee tomorrow.</p>
+              <p className="cta__desc">{t("landing.ctaDesc")}</p>
               <button
                 className="candy-btn candy-btn--coral"
                 type="button"
                 style={{ fontSize: 17, padding: "18px 48px" }}
                 onClick={() => openAuth("signup")}
               >
-                Begin
+                {t("landing.ctaButton")}
               </button>
-              <div className="cta__tagline">Begin. Know. Grow.</div>
+              <div className="cta__tagline">{t("landing.ctaTagline")}</div>
             </div>
           </div>
         </section>
@@ -888,8 +867,8 @@ export default function LandingPage() {
             <div className="auth-shell">
               <div className="auth-head">
                 <div>
-                  <h3 className="auth-title">Welcome to Begin</h3>
-                  <p className="auth-subtitle">Enter your personalized daily fortune</p>
+                  <h3 className="auth-title">{t("auth.welcomeTitle")}</h3>
+                  <p className="auth-subtitle">{t("auth.welcomeSubtitle")}</p>
                 </div>
                 <button className="auth-close" type="button" aria-label="Close" onClick={closeAuthPanel}>
                   ×
@@ -907,7 +886,7 @@ export default function LandingPage() {
                     setAuthSuccess("");
                   }}
                 >
-                  Log In
+                  {t("auth.logIn")}
                 </button>
                 <button
                   className={`auth-tab ${authMode === "signup" ? "is-active" : ""}`}
@@ -919,13 +898,13 @@ export default function LandingPage() {
                     setAuthSuccess("");
                   }}
                 >
-                  Sign Up
+                  {t("auth.signUp")}
                 </button>
               </div>
 
               <form className={`auth-form ${authMode === "login" ? "is-active" : ""}`} id="loginForm" onSubmit={handleLoginSubmit}>
                 <div className="auth-field">
-                  <label htmlFor="loginEmail">Email</label>
+                  <label htmlFor="loginEmail">{t("auth.email")}</label>
                   <input
                     id="loginEmail"
                     type="email"
@@ -938,12 +917,12 @@ export default function LandingPage() {
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="loginPassword">Password</label>
+                  <label htmlFor="loginPassword">{t("auth.password")}</label>
                   <input
                     id="loginPassword"
                     type="password"
                     name="password"
-                    placeholder="At least 6 characters"
+                    placeholder={t("auth.passwordHint")}
                     minLength={6}
                     required
                     value={loginPassword}
@@ -952,7 +931,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="form-foot">
-                  <span className="hint">Log in to enter today's fortune directly</span>
+                  <span className="hint">{t("auth.loginHint")}</span>
                   <button
                     className="link-btn"
                     type="button"
@@ -961,23 +940,23 @@ export default function LandingPage() {
                       setAuthSuccess("");
                     }}
                   >
-                    Need an account?
+                    {t("auth.needAccount")}
                   </button>
                 </div>
 
                 <button className="auth-submit" type="submit">
-                  Log In and Continue
+                  {t("auth.loginAndContinue")}
                 </button>
               </form>
 
               <form className={`auth-form ${authMode === "signup" ? "is-active" : ""}`} id="signupForm" onSubmit={handleSignupSubmit}>
                 <div className="auth-field">
-                  <label htmlFor="signupName">Name</label>
+                  <label htmlFor="signupName">{t("auth.name")}</label>
                   <input
                     id="signupName"
                     type="text"
                     name="name"
-                    placeholder="What should we call you?"
+                    placeholder={t("onboarding.name.prompt")}
                     required
                     value={signupName}
                     onChange={(event) => setSignupName(event.target.value)}
@@ -985,7 +964,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="signupEmail">Email</label>
+                  <label htmlFor="signupEmail">{t("auth.email")}</label>
                   <input
                     id="signupEmail"
                     type="email"
@@ -998,12 +977,12 @@ export default function LandingPage() {
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="signupPassword">Password</label>
+                  <label htmlFor="signupPassword">{t("auth.password")}</label>
                   <input
                     id="signupPassword"
                     type="password"
                     name="password"
-                    placeholder="At least 6 characters"
+                    placeholder={t("auth.passwordHint")}
                     minLength={6}
                     required
                     value={signupPassword}
@@ -1012,7 +991,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="form-foot">
-                  <span className="hint">After signup, you will start profile questions</span>
+                  <span className="hint">{t("auth.signupHint")}</span>
                   <button
                     className="link-btn"
                     type="button"
@@ -1021,12 +1000,12 @@ export default function LandingPage() {
                       setAuthSuccess("");
                     }}
                   >
-                    I already have an account
+                    {t("auth.haveAccount")}
                   </button>
                 </div>
 
                 <button className="auth-submit" type="submit">
-                  Create Account
+                  {t("auth.createAccount")}
                 </button>
               </form>
 
@@ -1045,8 +1024,8 @@ export default function LandingPage() {
 
               <div className="flow-head">
                 <div className="flow-head__text">
-                  <h3>Complete Your Profile</h3>
-                  <small>Answer patiently so we can know the real you</small>
+                  <h3>{t("landing.completeProfile")}</h3>
+                  <small>{t("landing.profileSubtitle")}</small>
                 </div>
                 <button className="flow-close" type="button" aria-label="Close" onClick={closeProfileFlow}>
                   ×
@@ -1054,7 +1033,7 @@ export default function LandingPage() {
               </div>
 
               <div className="flow-meta">
-                <div className="flow-meta__step">Step {flowComplete ? total : step} / {total}</div>
+                <div className="flow-meta__step">{t("landing.stepOf").replace("{step}", String(flowComplete ? total : step)).replace("{total}", String(total))}</div>
                 <div className="flow-progress">
                   <span style={{ width: `${flowProgress}%` }} />
                 </div>
@@ -1099,18 +1078,18 @@ export default function LandingPage() {
                 <div className="flow-error">{flowError}</div>
 
                 <button className="flow-skip" type="button" hidden={flowComplete || !currentQuestion?.optional} onClick={skipCurrentFlow}>
-                  Skip this question
+                  {t("landing.skipQuestion")}
                 </button>
 
                 <div className="flow-actions">
                   {!flowComplete && (
                     <button className="flow-btn flow-btn--ghost" type="button" onClick={goBackFlow} disabled={flowHistory.length === 0}>
-                      Back
+                      {t("common.back")}
                     </button>
                   )}
                   {!flowComplete && (
                     <button className="flow-btn flow-btn--primary" type="button" onClick={goNextFlow}>
-                      {nextQuestionId ? "Next" : "Finish and View Fortune"}
+                      {nextQuestionId ? t("common.next") : t("common.finish")}
                     </button>
                   )}
                 </div>
@@ -1119,24 +1098,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className={`fortune-portal ${fortuneOpen ? "is-open" : ""}`} aria-hidden={!fortuneOpen}>
-          <div className="fortune-portal__bar">
-            <div>
-              <div className="fortune-portal__title">Begin Fortune Space</div>
-              <div className="fortune-portal__status">{fortuneStatus}</div>
-            </div>
-            <button className="fortune-portal__close" type="button" onClick={() => setFortuneOpen(false)}>
-              Back
-            </button>
-          </div>
-          <div className="fortune-portal__wrap">
-            <iframe
-              className="fortune-portal__frame"
-              title="Begin fortune"
-              src={fortuneLoaded ? "/fortune-payload.html" : undefined}
-            />
-          </div>
-        </div>
       </div>
 
       <style jsx global>{`
@@ -2431,86 +2392,6 @@ export default function LandingPage() {
           align-self: flex-start;
         }
 
-        body.fortune-open {
-          overflow: hidden;
-        }
-
-        .fortune-portal {
-          position: fixed;
-          inset: 0;
-          z-index: 320;
-          display: flex;
-          flex-direction: column;
-          opacity: 0;
-          pointer-events: none;
-          background: rgba(253, 251, 248, 0.54);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          transition: opacity 0.34s ease;
-        }
-
-        .fortune-portal.is-open {
-          opacity: 1;
-          pointer-events: auto;
-        }
-
-        .fortune-portal__bar {
-          padding: 14px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 245, 240, 0.64));
-          border-bottom: 1px solid rgba(255, 255, 255, 0.74);
-        }
-
-        .fortune-portal__title {
-          font-family: "Fraunces", serif;
-          font-size: 24px;
-          line-height: 1.2;
-        }
-
-        .fortune-portal__status {
-          font-size: 13px;
-          color: var(--text-tertiary);
-          margin-top: 2px;
-        }
-
-        .fortune-portal__close {
-          border: none;
-          border-radius: 14px;
-          padding: 10px 14px;
-          font-family: "DM Sans", sans-serif;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          background: rgba(255, 255, 255, 0.82);
-          border: 1px solid rgba(255, 255, 255, 0.86);
-          cursor: pointer;
-        }
-
-        .fortune-portal__close:hover {
-          color: var(--coral-primary);
-          border-color: rgba(255, 138, 106, 0.42);
-        }
-
-        .fortune-portal__wrap {
-          flex: 1;
-          min-height: 0;
-          padding: 12px;
-        }
-
-        .fortune-portal__frame {
-          width: 100%;
-          height: 100%;
-          border: none;
-          border-radius: 20px;
-          background: var(--cream);
-          box-shadow:
-            0 20px 58px rgba(0, 0, 0, 0.1),
-            0 0 0 1px rgba(255, 255, 255, 0.6);
-        }
-
         .fade-in {
           opacity: 0;
           transform: translateY(24px);
@@ -2651,14 +2532,6 @@ export default function LandingPage() {
             min-height: 350px;
           }
 
-          .fortune-portal__bar {
-            padding: 12px 14px;
-          }
-
-          .fortune-portal__title {
-            font-size: 20px;
-          }
-
           .page {
             height: auto;
             min-height: 100vh;
@@ -2700,14 +2573,6 @@ export default function LandingPage() {
 
           .flow-actions {
             grid-template-columns: 1fr;
-          }
-
-          .fortune-portal__wrap {
-            padding: 8px;
-          }
-
-          .fortune-portal__frame {
-            border-radius: 14px;
           }
 
           .page {

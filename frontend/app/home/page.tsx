@@ -8,7 +8,8 @@ import { FortuneTab } from "../components/FortuneTab";
 import { DiaryTab } from "../components/DiaryTab";
 import { ChatOverlay } from "../components/ChatOverlay";
 import { CelestialPanel } from "../components/CelestialPanel";
-import { T, ThemeColor, suggestedQuestions } from "../lib/theme";
+import { T, ThemeColor, iconSize } from "../lib/theme";
+import { useTranslation } from "../i18n";
 
 type Tab = "fortune" | "diary";
 
@@ -20,6 +21,12 @@ function TopNav({ tab, onTab, onProfile, theme, avatarUrl }: {
   theme: ThemeColor;
   avatarUrl?: string;
 }) {
+  const { t, locale, setLocale } = useTranslation();
+  const toggleLanguage = () => setLocale(locale === "zh-CN" ? "en-US" : "zh-CN");
+  const tabs = [
+    { key: "fortune" as Tab, label: t("home.fortuneTab"), icon: "/icons/tile_7_nobg.png" },
+    { key: "diary" as Tab, label: t("home.diaryTab"), icon: "/icons/tile_8_nobg.png" },
+  ];
   return (
     <div style={{
       height: 56, flexShrink: 0, display: "flex", alignItems: "center",
@@ -33,10 +40,10 @@ function TopNav({ tab, onTab, onProfile, theme, avatarUrl }: {
         <span style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, color: T.text.primary }}>Begin</span>
       </div>
       <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.03)", borderRadius: 14, padding: 3 }}>
-        {([{ key: "fortune" as Tab, label: "Fortune", icon: "✨" }, { key: "diary" as Tab, label: "Diary", icon: "📝" }]).map(t => {
-          const a = t.key === tab;
+        {tabs.map(tb => {
+          const a = tb.key === tab;
           return (
-            <button key={t.key} onClick={() => onTab(t.key)} style={{
+            <button key={tb.key} onClick={() => onTab(tb.key)} style={{
               padding: "8px 24px", borderRadius: 11, border: "none", cursor: "pointer",
               fontSize: 13, fontWeight: a ? 600 : 500, fontFamily: "inherit",
               display: "flex", alignItems: "center", gap: 6,
@@ -45,17 +52,25 @@ function TopNav({ tab, onTab, onProfile, theme, avatarUrl }: {
               background: a ? "rgba(255,255,255,0.92)" : "transparent",
               boxShadow: a ? "0 1px 8px rgba(0,0,0,0.04)" : "none",
             }}>
-              <span style={{ fontSize: 13 }}>{t.icon}</span> {t.label}
+              <img src={tb.icon} alt={tb.label} style={{ width: iconSize.tab, height: iconSize.tab }} /> {tb.label}
             </button>
           );
         })}
       </div>
-      <button onClick={onProfile} style={{
-        width: 34, height: 34, borderRadius: 12, border: "none", cursor: "pointer",
-        background: avatarUrl ? "transparent" : `linear-gradient(135deg,${theme.airy},${theme.soft}50)`,
-        fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.03)", padding: 0, overflow: "hidden",
-      }}>{avatarUrl ? <img src={avatarUrl} alt="" style={{ width: 34, height: 34, borderRadius: 12, objectFit: "cover" }} /> : "👤"}</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={toggleLanguage} style={{
+          padding: "6px 12px", borderRadius: 10, border: "none", cursor: "pointer",
+          background: "rgba(0,0,0,0.04)", fontSize: 12, fontWeight: 500,
+          color: T.text.tertiary, fontFamily: "inherit",
+          transition: "all 0.2s",
+        }}>{locale === "zh-CN" ? "EN" : "中"}</button>
+        <button onClick={onProfile} style={{
+          width: 34, height: 34, borderRadius: 12, border: "none", cursor: "pointer",
+          background: avatarUrl ? "transparent" : `linear-gradient(135deg,${theme.airy},${theme.soft}50)`,
+          fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 1px 6px rgba(0,0,0,0.03)", padding: 0, overflow: "hidden",
+        }}>{avatarUrl ? <img src={avatarUrl} alt="" style={{ width: 34, height: 34, borderRadius: 12, objectFit: "cover" }} /> : "👤"}</button>
+      </div>
     </div>
   );
 }
@@ -67,9 +82,10 @@ function ProfileModal({ onClose, user, onLogout, diaryCount }: {
   onLogout: () => void;
   diaryCount?: number;
 }) {
+  const { t } = useTranslation();
   const s = user.usageStats;
   const stats: [string, string | number, string][] = [
-    ["📝", s?.totalDiaries ?? diaryCount ?? 0, "Entries"],
+    ["📝", s?.totalDiaries ?? diaryCount ?? 0, t("diary.entries") as string],
     ["🔥", s?.consecutiveCheckins ?? 0, "Streak"],
     ["✍️", s?.totalWords ?? 0, "Words"],
   ];
@@ -86,7 +102,7 @@ function ProfileModal({ onClose, user, onLogout, diaryCount }: {
         boxShadow: "0 6px 12px rgba(0,0,0,0.05)",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
-          <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Profile</h2>
+          <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 500, margin: 0 }}>{t("settings.title")}</h2>
           <button onClick={onClose} style={{
             background: "rgba(0,0,0,0.04)", border: "none", width: 30, height: 30,
             borderRadius: 10, fontSize: 14, cursor: "pointer", color: T.text.tertiary,
@@ -138,7 +154,7 @@ function ProfileModal({ onClose, user, onLogout, diaryCount }: {
           cursor: "pointer", fontSize: 14, fontWeight: 500, fontFamily: "inherit",
           background: "rgba(0,0,0,0.04)", color: T.text.tertiary,
           transition: "all 0.2s",
-        }}>Sign Out</button>
+        }}>{t("settings.logout")}</button>
       </div>
     </div>
   );
@@ -187,8 +203,10 @@ function OrbBackground({ theme, tab }: { theme: ThemeColor; tab: Tab }) {
 
 // ── BreathBlobs (right-side Quick Ask panel) ─────────────────────
 function BreathBlobs({ theme, onBubbleClick, activeCat }: { theme: ThemeColor; onBubbleClick: (q: string) => void; activeCat: string }) {
+  const { t } = useTranslation();
   const [customQ, setCustomQ] = useState("");
-  const questions = suggestedQuestions[activeCat] || suggestedQuestions.overall;
+  const localQuestions = t(`suggestedQuestions.${activeCat}`);
+  const questions: string[] = Array.isArray(localQuestions) ? localQuestions : [];
   const radii = ["26px 18px 24px 16px","18px 26px 16px 24px","24px 16px 26px 18px","16px 24px 18px 26px","22px 18px 26px 16px"];
 
   const handleCustomSend = () => {
@@ -207,10 +225,10 @@ function BreathBlobs({ theme, onBubbleClick, activeCat }: { theme: ThemeColor; o
       {/* Quick Ask title */}
       <div style={{ paddingBottom: 10, zIndex: 2, flexShrink: 0 }}>
         <div style={{ fontSize: 18, fontWeight: 600, fontFamily: "'Fraunces',serif", color: T.text.primary, marginBottom: 12 }}>
-          Quick Ask
+          {t("chat.quickAsk")}
         </div>
         <div style={{ fontSize: 13, color: T.text.quaternary, lineHeight: 1.45 }}>
-          Ask about today
+          {t("chat.askPlaceholder")}
         </div>
       </div>
 
@@ -220,7 +238,7 @@ function BreathBlobs({ theme, onBubbleClick, activeCat }: { theme: ThemeColor; o
           value={customQ}
           onChange={e => setCustomQ(e.target.value)}
           onKeyDown={e => e.key === "Enter" && handleCustomSend()}
-          placeholder="What's on your mind?"
+          placeholder={t("chat.askPlaceholder") as string}
           style={{
             flex: 1, padding: "10px 14px", borderRadius: 16,
             border: `1px solid ${theme.soft}40`,
@@ -254,7 +272,7 @@ function BreathBlobs({ theme, onBubbleClick, activeCat }: { theme: ThemeColor; o
 
       {/* Breathing bubbles */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 2, flexShrink: 0 }}>
-        {questions.slice(0, 5).map((q, i) => (
+        {questions.slice(0, 5).map((q: string, i: number) => (
           <div key={i} onClick={() => onBubbleClick(q)} style={{
             padding: "11px 16px",
             borderRadius: radii[i],
@@ -296,6 +314,7 @@ function BreathBlobs({ theme, onBubbleClick, activeCat }: { theme: ThemeColor; o
 // ── AppShell ─────────────────────────────────────────────────────
 function AppShell() {
   const { user, loading, logout } = useAuth();
+  const { t, locale } = useTranslation();
   const [tab, setTab] = useState<Tab>("fortune");
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeCatTheme, setActiveCatTheme] = useState<ThemeColor>(T.coral);
@@ -306,9 +325,18 @@ function AppShell() {
   const [diaryChatOpen, setDiaryChatOpen] = useState(false);
   const [fortuneRevealed, setFortuneRevealed] = useState(false);
   const [diaryCount, setDiaryCount] = useState(0);
+  const [activeChatType, setActiveChatType] = useState<"fortune" | "diary">("fortune");
+  const [fortuneData, setFortuneData] = useState<any>(null);
 
   const orbTheme = tab === "diary" ? T.purple : activeCatTheme;
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const today = new Date().toLocaleDateString(locale === "zh-CN" ? "zh-CN" : "en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return t("home.greeting").replace("{timeOfDay}", t("home.morning") as string);
+    if (h < 18) return t("home.greeting").replace("{timeOfDay}", t("home.afternoon") as string);
+    return t("home.greeting").replace("{timeOfDay}", t("home.evening") as string);
+  };
 
   const handleCloseChat = useCallback(() => {
     setChatOpen(false);
@@ -341,7 +369,7 @@ function AppShell() {
   });
 
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent="fortune_diary" properties={{ user_id: user.id }}>
+    <CopilotKit runtimeUrl="/api/copilotkit" agent="fortune_diary" properties={{ user_id: user.id, chat_type: activeChatType, language: locale }}>
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
         <OrbBackground theme={activeCatTheme} tab={tab} />
         <TopNav tab={tab} onTab={setTab} onProfile={() => setProfileOpen(true)} theme={activeCatTheme} avatarUrl={user.avatar_url} />
@@ -349,15 +377,17 @@ function AppShell() {
         <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", zIndex: 1 }}>
           {tab === "fortune" && (
             <FortuneTab
+              language={locale}
               onThemeChange={setActiveCatTheme}
               onRevealChange={setFortuneRevealed}
               onActiveCatChange={setActiveCat}
+              onFortuneChange={setFortuneData}
               headerSlot={
                 <div style={{ marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <div>
                     <div style={{ fontSize: 12.5, color: T.text.quaternary, fontWeight: 500, marginBottom: 4 }}>{today}</div>
                     <h1 style={{ fontFamily: "'Fraunces',serif", fontSize: 26, fontWeight: 500, margin: 0 }}>
-                      Good morning ☀️
+                      {getGreeting()}
                     </h1>
                   </div>
                   {fortuneRevealed && (
@@ -365,7 +395,7 @@ function AppShell() {
                       onClick={() => { setCelestialOpen(!celestialOpen); if (chatOpen) { setChatOpen(false); setChatQuestion(null); } }}
                       style={candyGlassBtn(activeCatTheme, celestialOpen)}
                     >
-                      <span style={{ fontSize: 16, filter: `drop-shadow(0 2px 4px ${activeCatTheme.p}30)` }}>✨</span> Today&apos;s Celestial
+                      <img src="/icons/tile_7_nobg.png" alt="Celestial" style={{ width: iconSize.btn, height: iconSize.btn, filter: `drop-shadow(0 2px 4px ${activeCatTheme.p}30)` }} /> {t("home.celestialMap")}
                     </button>
                   )}
                 </div>
@@ -380,15 +410,15 @@ function AppShell() {
                   <div>
                     <div style={{ fontSize: 12.5, color: T.text.quaternary, fontWeight: 500, marginBottom: 4 }}>{today}</div>
                     <h1 style={{ fontFamily: "'Fraunces',serif", fontSize: 26, fontWeight: 500, margin: 0, lineHeight: 1.3 }}>
-                      The more you write,<br />the smarter your fortune gets
+                      {t("fortune.moreYouWrite")}
                     </h1>
                   </div>
                   <button
-                    onClick={() => setDiaryChatOpen(true)}
+                    onClick={() => { setDiaryChatOpen(true); setActiveChatType("diary"); }}
                     style={candyGlassBtn(orbTheme, diaryChatOpen)}
                   >
-                    <span style={{ fontSize: 16, filter: `drop-shadow(0 2px 4px ${orbTheme.p}30)` }}>💬</span>
-                    <span>Chat to Journal</span>
+                    <img src="/icons/tile_9_nobg.png" alt="Chat to Journal" style={{ width: iconSize.btn, height: iconSize.btn, filter: `drop-shadow(0 2px 4px ${orbTheme.p}30)` }} />
+                    <span>{t("chat.chatToJournal")}</span>
                   </button>
                 </div>
                 <div style={{ margin: "10px 0 24px" }}>
@@ -407,6 +437,7 @@ function AppShell() {
                 <BreathBlobs theme={activeCatTheme} activeCat={activeCat} onBubbleClick={(q: string) => {
                   setChatQuestion(q);
                   setChatOpen(true);
+                  setActiveChatType("fortune");
                 }} />
               )}
               {/* Chat overlay panel */}
@@ -418,7 +449,7 @@ function AppShell() {
                 display: "flex", flexDirection: "column",
               }}>
                 {chatOpen && (
-                  <ChatOverlay open={chatOpen} onClose={handleCloseChat} theme={activeCatTheme} initialQuestion={chatQuestion} />
+                  <ChatOverlay open={chatOpen} onClose={handleCloseChat} theme={activeCatTheme} initialQuestion={chatQuestion} chatType="fortune" />
                 )}
               </div>
 
@@ -432,7 +463,7 @@ function AppShell() {
                 display: "flex", flexDirection: "column",
               }}>
                 {celestialOpen && (
-                  <CelestialPanel onClose={() => setCelestialOpen(false)} theme={activeCatTheme} fortune={null} />
+                  <CelestialPanel onClose={() => setCelestialOpen(false)} theme={activeCatTheme} fortune={fortuneData} />
                 )}
               </div>
             </>
@@ -449,7 +480,7 @@ function AppShell() {
               display: "flex", flexDirection: "column",
             }}>
               {diaryChatOpen && (
-                <ChatOverlay open={diaryChatOpen} onClose={() => setDiaryChatOpen(false)} theme={orbTheme} />
+                <ChatOverlay open={diaryChatOpen} onClose={() => setDiaryChatOpen(false)} theme={orbTheme} chatType="diary" />
               )}
             </div>
           )}

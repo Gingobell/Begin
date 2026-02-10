@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useTranslation } from "../i18n";
 
 const T = {
   cream: "#FDFBF8",
@@ -19,6 +20,7 @@ export function LoginPage() {
   const [birthday, setBirthday] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +33,7 @@ export function LoginPage() {
         await register(email, password, fullName || undefined, birthday || undefined);
       }
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      setError(err.message || t("auth.somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -83,7 +85,7 @@ export function LoginPage() {
           </span>
         </div>
         <p style={{ fontSize: 13, color: T.text.quaternary, marginBottom: 28 }}>
-          Your fortune & diary companion
+          {t("auth.tagline")}
         </p>
 
         {/* Mode tabs */}
@@ -101,7 +103,7 @@ export function LoginPage() {
                 boxShadow: active ? "0 1px 8px rgba(0,0,0,0.04)" : "none",
                 transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
               }}>
-                {m === "login" ? "Sign In" : "Sign Up"}
+                {m === "login" ? t("auth.signIn") : t("auth.signUp")}
               </button>
             );
           })}
@@ -111,21 +113,21 @@ export function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {mode === "register" && (
             <input
-              type="text" placeholder="Name (optional)" value={fullName}
+              type="text" placeholder={t("auth.namePlaceholder")} value={fullName}
               onChange={e => setFullName(e.target.value)} style={inputStyle}
             />
           )}
           <input
-            type="email" placeholder="Email" value={email}
+            type="email" placeholder={t("auth.emailPlaceholder")} value={email}
             onChange={e => setEmail(e.target.value)} required style={inputStyle}
           />
           <input
-            type="password" placeholder="Password" value={password}
+            type="password" placeholder={t("auth.passwordPlaceholder")} value={password}
             onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle}
           />
           {mode === "register" && (
             <input
-              type="date" placeholder="Birthday" value={birthday}
+              type="date" placeholder={t("auth.birthday")} value={birthday}
               onChange={e => setBirthday(e.target.value)} style={inputStyle}
             />
           )}
@@ -141,7 +143,7 @@ export function LoginPage() {
             boxShadow: `0 4px 16px ${T.coral.p}30`,
             opacity: loading ? 0.7 : 1, transition: "opacity 0.2s, transform 0.15s",
           }}>
-            {loading ? "..." : mode === "login" ? "Sign In" : "Create Account"}
+            {loading ? "..." : mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
           </button>
         </form>
       </div>

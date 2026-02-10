@@ -39,6 +39,7 @@ dependencies = [
     
     # --- Chinese lunar calendar (for fortune calculations) ---
     "cnlunar",
+    "sxtwl",
 ]
 
 [project.optional-dependencies]

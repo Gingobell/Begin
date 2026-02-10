@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getDiaries, createDiary } from "../lib/api";
 import { T } from "../lib/theme";
+import { useTranslation } from "../i18n";
 
 // ── Types ────────────────────────────────────────────────────────
 interface DiaryEntry {
@@ -24,6 +25,7 @@ const MOOD_LABELS: Record<number, string> = { 1: "Awful", 2: "Bad", 3: "Okay", 4
 
 // ── DiaryTab ─────────────────────────────────────────────────────
 export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) => void }) {
+  const { t } = useTranslation();
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -77,10 +79,10 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
       }}>
         <div>
           <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 500, color: T.text.primary, margin: 0 }}>
-            Diary
+            {t("diary.title")}
           </h2>
           <p style={{ fontSize: 12, color: T.text.quaternary, marginTop: 2 }}>
-            {diaries.length} {diaries.length === 1 ? "entry" : "entries"}
+            {diaries.length} {diaries.length === 1 ? t("diary.entry") : t("diary.entries")}
           </p>
         </div>
         <button onClick={() => setShowCompose(!showCompose)} style={{
@@ -91,7 +93,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
           boxShadow: showCompose ? "none" : `0 3px 14px ${T.purple.p}25`,
           transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
         }}>
-          {showCompose ? "Cancel" : "New Entry"}
+          {showCompose ? t("common.cancel") : t("diary.newEntry")}
         </button>
       </div>
 
@@ -111,7 +113,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
         }}>
           {/* Mood selector */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 14 }}>
-            <span style={{ fontSize: 12, color: T.text.tertiary, marginRight: 4 }}>Mood:</span>
+            <span style={{ fontSize: 12, color: T.text.tertiary, marginRight: 4 }}>{t("diary.mood")}</span>
             {[1, 2, 3, 4, 5].map(m => (
               <button key={m} onClick={() => setMood(m)} style={{
                 width: 36, height: 36, borderRadius: "50%", border: "none", cursor: "pointer",
@@ -124,14 +126,14 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
                 {MOOD_EMOJIS[m]}
               </button>
             ))}
-            <span style={{ fontSize: 11, color: T.text.quaternary, marginLeft: 6 }}>{MOOD_LABELS[mood]}</span>
+            <span style={{ fontSize: 11, color: T.text.quaternary, marginLeft: 6 }}>{t(`diary.moodLabels.${mood}`)}</span>
           </div>
 
           {/* Textarea */}
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="What happened today? Write down your thoughts..."
+            placeholder={t("diary.placeholder")}
             rows={5}
             style={{
               width: "100%", padding: "14px 16px", borderRadius: 16,
@@ -148,7 +150,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
               padding: "9px 20px", borderRadius: 12, border: "none", cursor: "pointer",
               fontSize: 13, fontFamily: "inherit", fontWeight: 500,
               background: "rgba(0,0,0,0.04)", color: T.text.tertiary,
-            }}>Cancel</button>
+            }}>{t("common.cancel")}</button>
             <button onClick={handleSubmit} disabled={submitting || !content.trim()} style={{
               padding: "9px 24px", borderRadius: 12, border: "none", cursor: "pointer",
               fontSize: 13, fontFamily: "inherit", fontWeight: 600, color: "#fff",
@@ -156,7 +158,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
               opacity: (submitting || !content.trim()) ? 0.5 : 1,
               transition: "opacity 0.2s",
             }}>
-              {submitting ? "Saving..." : "Save"}
+              {submitting ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>
@@ -180,7 +182,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
               background: T.purple.airy, display: "flex", alignItems: "center",
               justifyContent: "center", fontSize: 28,
             }}>📝</div>
-            <p style={{ fontSize: 13, color: T.text.tertiary }}>No entries yet. Write your first one.</p>
+            <p style={{ fontSize: 13, color: T.text.tertiary }}>{t("diary.noEntries")}</p>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -247,7 +249,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
                   <span style={{ fontSize: 26 }}>{d.mood ? (MOOD_EMOJIS[d.mood] || "😐") : "📝"}</span>
                   <div>
                     <p style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 500, color: T.text.primary, margin: 0 }}>
-                      {d.title || "Diary Entry"}
+                      {d.title || t("diary.diaryEntry")}
                     </p>
                     <p style={{ fontSize: 11, color: T.text.quaternary, marginTop: 3 }}>
                       {d.weekday && d.day ? `${d.weekday} ${d.day}` : ""}
@@ -288,7 +290,7 @@ export function DiaryTab({ onCountChange }: { onCountChange?: (count: number) =>
                   borderLeft: `3px solid ${T.blue.p}`,
                 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: T.blue.p, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    ✨ AI Insight
+                    {"✨ " + t("diary.aiInsight")}
                   </p>
                   <p style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.7, margin: 0 }}>
                     {d.insight}

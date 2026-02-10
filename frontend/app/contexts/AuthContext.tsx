@@ -9,6 +9,7 @@ import {
   loadTokens,
   clearTokens,
   getAccessToken,
+  refreshAccessToken,
   type AuthResponse,
 } from "../lib/api";
 
@@ -60,20 +61,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Restore session on mount
+  // Restore session on mount — proactively refresh token
   useEffect(() => {
-    loadTokens();
-    const saved = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-    if (saved && getAccessToken()) {
-      try {
-        const base = JSON.parse(saved) as UserInfo;
-        setUser(base);
-        fetchAndSetProfile(base);
-      } catch {
-        clearTokens();
+    let cancelled = false;
+    async function restore() {
+      loadTokens();
+      const saved = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      if (saved && getAccessToken()) {
+        try {
+          const base = JSON.parse(saved) as UserInfo;
+          setUser(base);
+          const ok = await refreshAccessToken();
+          if (!cancelled && ok) {
+            fetchAndSetProfile(base);
+          } else if (!cancelled) {
+            setUser(null);
+          }
+        } catch {
+          if (!cancelled) { clearTokens(); setUser(null); }
+        }
       }
+      if (!cancelled) setLoading(false);
     }
-    setLoading(false);
+    restore();
+    return () => { cancelled = true; };
   }, [fetchAndSetProfile]);
 
   const handleAuth = useCallback((data: AuthResponse) => {
